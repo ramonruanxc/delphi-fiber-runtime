@@ -98,8 +98,8 @@ def main():
                    power_mode='not recorded; shared-runner timings are descriptive', checks={}, benchmarks={})
     print(run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py']))
     native = build_native(out / 'native')
-    context_flags = ['-Fl' + str(native), '-Ct']
-    summary['context_build_flags'] = [*summary['build_flags'], '-Ct']
+    context_flags = ['-Fl' + str(native), '-Ct', '-O2']
+    summary['context_build_flags'] = [*summary['build_flags'], '-Ct', '-O2']
     for name in ('ScheduleTests', 'PlatformTests', 'ContextTests'):
         binary = build(args.fpc, 'tests/' + name + '.dpr', out / name,
                        extra_flags=context_flags if name == 'ContextTests' else ())

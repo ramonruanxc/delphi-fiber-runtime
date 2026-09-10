@@ -61,7 +61,8 @@ Pascal ContextTests and ContextDemo. The driver builds static helper objects and
 archives from the pinned upstream assembly and requires fresh outputs at every
 stage; an old test executable cannot certify a compiler that produced nothing.
 
-Context builds also enable FPC stack checking (`-Ct`). Tests interleave protected Pascal bodies and preserve local data, managed
+Context builds enable FPC stack checking and optimization (`-Ct -O2`). Tests
+interleave protected Pascal bodies and preserve local data, managed
 values, stack bounds and floating-point rounding. They exercise callback failures,
 cooperative cancellation and rejected destruction of suspended tasks. A different
 thread must be refused without mutating task state. The identity mutation must
