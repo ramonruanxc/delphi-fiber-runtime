@@ -9,14 +9,15 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 def validate_demo(data):
     required = ('tasks', 'completed', 'yields', 'resume_calls', 'elapsed_us',
-                'requested_stack_bytes_per_task', 'carrier_threads')
+                'requested_stack_bytes_per_task', 'carrier_threads', 'cancelled', 'cancel_cleanup_count')
     if (data.get('format') != 'context-demo-v1' or not isinstance(data.get('backend'), str)
             or not data['backend'] or any(type(data.get(k)) is not int for k in required)):
         raise ValueError('Incomplete context demo metadata')
     if (data['tasks'] <= 0 or data['completed'] != data['tasks'] or data['yields'] < 0
             or data['resume_calls'] != data['yields'] + data['tasks']
             or data['elapsed_us'] < 0 or data['carrier_threads'] != 1
-            or not 65536 <= data['requested_stack_bytes_per_task'] <= 67108864):
+            or not 65536 <= data['requested_stack_bytes_per_task'] <= 67108864
+            or data['cancelled'] != 1 or data['cancel_cleanup_count'] != 1):
         raise ValueError('Inconsistent context demo counts')
     return dict(data, context_transfers=2 * data['resume_calls'], qualification='descriptive',
                 mean_us_per_resume_roundtrip=data['elapsed_us'] / data['resume_calls'])
@@ -57,14 +58,21 @@ def build_native(directory, root=ROOT, run_tests=True):
         obj.unlink(missing_ok=True)
         flags = ['-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-pthread'] if path.suffix == '.c' else []
         invoke(['cc', *flags, '-c', path, '-o', obj])
+        if not obj.is_file():
+            raise RuntimeError('Native compiler returned success without a new object')
         objects.append(obj)
     library = directory / 'libfr_context.a'
     library.unlink(missing_ok=True)
     invoke(['ar', 'rcs', library, *objects])
+    if not library.is_file():
+        raise RuntimeError('Archiver returned success without a new library')
     if run_tests:
         test = directory / 'ContextNativeTests'
+        test.unlink(missing_ok=True)
         invoke(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', '-O2', '-pthread',
                 source / 'context_tests.c', library, '-lm', '-o', test])
+        if not test.is_file():
+            raise RuntimeError('Native compiler returned success without a new test executable')
         result = invoke([test])
         if not result.startswith('PASS: native context lifecycle, nested yields, alternation, ownership, churn ('):
             raise RuntimeError('Native test missing positive marker')

@@ -26,11 +26,21 @@ begin
   end;
 end;
 
+procedure CancelWork(ATask: TFiberTask; AData: Pointer);
+begin
+  try
+    ATask.Yield;
+  finally
+    Inc(PInteger(AData)^);
+  end;
+end;
+
 procedure Run;
 var Runtime: TFiberRuntime; Timer: TPlatformTimer;
     Tasks: array[0..TaskCount-1] of TFiberTask;
     Data: array[0..TaskCount-1] of TWork;
-    I, Round, Completed, Yielded: Integer; Started, Elapsed: Int64;
+    I, Round, Completed, Yielded, CancelCleanups: Integer; Started, Elapsed: Int64;
+    CancelTask: TFiberTask;
 begin
   FillChar(Tasks, SizeOf(Tasks), 0);
   FillChar(Data, SizeOf(Data), 0);
@@ -55,10 +65,20 @@ begin
     Inc(Yielded, Data[I].YieldCount);
     Tasks[I].Free;
   end;
+  { Separate cancellation/cleanup demonstration, outside the timing window. }
+  CancelCleanups := 0;
+  CancelTask := Runtime.CreateTask(CancelWork, @CancelCleanups, StackBytes);
+  CancelTask.Resume;
+  CancelTask.Cancel;
+  CancelTask.Resume;
+  if (CancelTask.State <> fsCancelled) or (CancelCleanups <> 1) then
+    raise Exception.Create('Cooperative cancellation did not finish cleanup');
+  CancelTask.Free;
   WriteLn('{"format":"context-demo-v1","backend":"', Runtime.BackendName,
     '","tasks":', TaskCount, ',"completed":', Completed, ',"yields":', Yielded,
     ',"resume_calls":', TaskCount*(YieldsPerTask+1), ',"elapsed_us":', Elapsed,
-    ',"requested_stack_bytes_per_task":', StackBytes, ',"carrier_threads":1}');
+    ',"requested_stack_bytes_per_task":', StackBytes,
+    ',"carrier_threads":1,"cancelled":1,"cancel_cleanup_count":', CancelCleanups, '}');
   Timer.Free;
   Runtime.Free;
 end;
