@@ -54,7 +54,12 @@ begin
   end;
   Started := Timer.NowUs;
   for Round := 0 to YieldsPerTask do
-    for I := 0 to TaskCount-1 do Tasks[I].Resume;
+    for I := 0 to TaskCount-1 do
+    begin
+      Tasks[I].Resume;
+      if Tasks[I].State in [fsFaulted, fsCancelled] then
+        raise Exception.Create('Task failed: ' + Tasks[I].ErrorClass + ': ' + Tasks[I].ErrorMessage);
+    end;
   Elapsed := Timer.NowUs - Started;
   Completed := 0; Yielded := 0;
   for I := 0 to TaskCount-1 do
