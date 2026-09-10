@@ -11,6 +11,8 @@ import sys
 import time
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
+from context_build import build_native, validate_demo
 
 
 def expected_failure(code, output, assertion):
@@ -25,13 +27,13 @@ def run(command, timeout=60, cwd=ROOT):
     return result.stdout + result.stderr
 
 
-def build(fpc, source, directory, defines=()):
+def build(fpc, source, directory, defines=(), extra_flags=()):
     directory.mkdir(parents=True, exist_ok=True)
     binary = directory / (pathlib.Path(source).stem + ('.exe' if os.name == 'nt' else ''))
     binary.unlink(missing_ok=True)
     output = run([fpc, '-B', '-Mdelphi', '-Sa', '-Cr', '-Co', '-Fusrc',
                   '-FU' + str(directory), '-o' + str(binary),
-                  *['-d' + d for d in defines], source])
+                  *['-d' + d for d in defines], *extra_flags, source])
     (directory / 'compile.log').write_text(output, encoding='utf-8')
     if not binary.is_file():
         raise RuntimeError('Compiler returned success without creating executable: ' + str(binary))
@@ -95,8 +97,10 @@ def main():
                    build_flags=['-B', '-Mdelphi', '-Sa', '-Cr', '-Co'],
                    power_mode='not recorded; shared-runner timings are descriptive', checks={}, benchmarks={})
     print(run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py']))
-    for name in ('ScheduleTests', 'PlatformTests'):
-        binary = build(args.fpc, 'tests/' + name + '.dpr', out / name)
+    native = build_native(out / 'native')
+    context_flags = ['-Fl' + str(native)]
+    for name in ('ScheduleTests', 'PlatformTests', 'ContextTests'):
+        binary = build(args.fpc, 'tests/' + name + '.dpr', out / name, extra_flags=context_flags)
         result = run([binary], timeout=30)
         (out / name / 'run.log').write_text(result, encoding='utf-8')
         if 'PASS ' + name not in result:
@@ -110,6 +114,20 @@ def main():
         (out / define / 'run.log').write_text(output, encoding='utf-8')
         if not expected_failure(result.returncode, output, assertion):
             raise RuntimeError(f'Unexpected negative result for {define}: {result.returncode}: {output}')
+        summary['checks'][define] = dict(exit_code=result.returncode, assertion=output.strip())
+        print('PASS negative ' + define)
+    mutations = [('CONTEXT_PROVE_IDENTITY', 'CONTEXT_TASK_IDENTITY')]
+    if os.name != 'nt':
+        mutations.append(('CONTEXT_PROVE_RTL', 'CONTEXT_RTL_ISOLATION'))
+    else:
+        summary['checks']['CONTEXT_PROVE_RTL'] = 'not applicable: Windows uses native SEH, not the Unix SJLJ adapter'
+    for define, assertion in mutations:
+        binary = build(args.fpc, 'tests/ContextTests.dpr', out / define, [define], context_flags)
+        result = subprocess.run([str(binary)], capture_output=True, text=True, timeout=10)
+        output = result.stdout + result.stderr
+        (out / define / 'run.log').write_text(output, encoding='utf-8')
+        if not expected_failure(result.returncode, output, assertion):
+            raise RuntimeError(f'Unexpected context negative result {define}: {result.returncode}: {output}')
         summary['checks'][define] = dict(exit_code=result.returncode, assertion=output.strip())
         print('PASS negative ' + define)
     spec = importlib.util.spec_from_file_location('report', ROOT / 'scripts/report.py')
@@ -129,6 +147,13 @@ def main():
         (out / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
         summary['benchmarks'][name] = result
         print(f"{name}: started={result['started_cycles']} skipped={result['skipped_cycles']}; descriptive")
+    context_binary = build(args.fpc, 'demo/ContextDemo.dpr', out / 'context-demo', extra_flags=context_flags)
+    summary['context_binary_sha256'] = hashlib.sha256(context_binary.read_bytes()).hexdigest()
+    raw = run([context_binary], timeout=30)
+    context_result = validate_demo(json.loads(raw))
+    (out / 'context-demo.json').write_text(json.dumps(context_result, indent=2) + '\n', encoding='utf-8')
+    summary['context_experiment'] = context_result
+    print(f"context: {context_result['completed']} completed, {context_result['yields']} yields; descriptive")
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
     print('PASS all functional checks; timing is descriptive')
 

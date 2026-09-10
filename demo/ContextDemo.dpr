@@ -1,0 +1,77 @@
+program ContextDemo;
+{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+{$APPTYPE CONSOLE}
+uses
+  {$IFDEF UNIX}cthreads,{$ENDIF}
+  SysUtils,
+  FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
+  FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas';
+
+const TaskCount = 16; YieldsPerTask = 1000; StackBytes = 262144;
+type TWork = record YieldCount: Integer; LocalTag: Pointer; end;
+     PWork = ^TWork;
+
+procedure Work(ATask: TFiberTask; AData: Pointer);
+var I: Integer; Context: PWork; Saved: PtrUInt;
+begin
+  Context := PWork(AData);
+  Saved := PtrUInt(Context^.LocalTag) * 17;
+  for I := 1 to YieldsPerTask do
+  begin
+    Inc(Context^.YieldCount);
+    ATask.Yield;
+    if (ATask.LocalValue <> Context^.LocalTag) or
+       (Saved <> PtrUInt(Context^.LocalTag) * 17) then
+      raise Exception.Create('Task-local or stack state corrupted');
+  end;
+end;
+
+procedure Run;
+var Runtime: TFiberRuntime; Timer: TPlatformTimer;
+    Tasks: array[0..TaskCount-1] of TFiberTask;
+    Data: array[0..TaskCount-1] of TWork;
+    I, Round, Completed, Yielded: Integer; Started, Elapsed: Int64;
+begin
+  FillChar(Tasks, SizeOf(Tasks), 0);
+  FillChar(Data, SizeOf(Data), 0);
+  Runtime := TFiberRuntime.Create;
+  Timer := TPlatformTimer.Create;
+  for I := 0 to TaskCount-1 do
+  begin
+    Data[I].LocalTag := Pointer(PtrUInt(I+1));
+    Tasks[I] := Runtime.CreateTask(Work, @Data[I], StackBytes);
+    Tasks[I].LocalValue := Data[I].LocalTag;
+  end;
+  Started := Timer.NowUs;
+  for Round := 0 to YieldsPerTask do
+    for I := 0 to TaskCount-1 do Tasks[I].Resume;
+  Elapsed := Timer.NowUs - Started;
+  Completed := 0; Yielded := 0;
+  for I := 0 to TaskCount-1 do
+  begin
+    if Tasks[I].State <> fsCompleted then
+      raise Exception.Create('Task failed: ' + Tasks[I].ErrorClass + ': ' + Tasks[I].ErrorMessage);
+    Inc(Completed);
+    Inc(Yielded, Data[I].YieldCount);
+    Tasks[I].Free;
+  end;
+  WriteLn('{"format":"context-demo-v1","backend":"', Runtime.BackendName,
+    '","tasks":', TaskCount, ',"completed":', Completed, ',"yields":', Yielded,
+    ',"resume_calls":', TaskCount*(YieldsPerTask+1), ',"elapsed_us":', Elapsed,
+    ',"requested_stack_bytes_per_task":', StackBytes, ',"carrier_threads":1}');
+  Timer.Free;
+  Runtime.Free;
+end;
+
+begin
+  try
+    Run;
+  except
+    on E: Exception do
+    begin
+      { A failed experiment exits; it never force-deletes a live stack. }
+      WriteLn(E.ClassName, ': ', E.Message);
+      Halt(1);
+    end;
+  end;
+end.
