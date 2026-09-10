@@ -1,0 +1,16 @@
+/build/
+/dist/
+/.superpowers/
+*.ppu
+*.o
+*.dcu
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.compiled
+*.identcache
+*.local
+*.res
+__pycache__/
