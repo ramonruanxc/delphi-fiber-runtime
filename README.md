@@ -35,7 +35,7 @@ python scripts/check.py
 python scripts/package.py
 ```
 
-O primeiro comando compila, executa os testes e mede dois cenários. Os dados
+O primeiro comando compila, executa os testes e mede três cenários. Os dados
 ficam em `build/check/`; o segundo cria os pacotes em `dist/` e compila um
 consumidor extraído em um caminho com espaços. O empacotamento usa arquivos
 rastreados pelo Git; execute a partir de um clone do repositório.
@@ -66,9 +66,10 @@ definida pelo seu cenário, forneça ambos os limites (este é apenas um exemplo
 python scripts/report.py build/check/idle.csv --max-lateness-us 100 --max-violation-fraction 0.01
 ```
 
-Esse comando permite atraso de até 100 us em 99% dos ciclos planejados, contando
-descartes como violações. O exemplo não é uma garantia do projeto. Registre
-também hardware, duração, carga e configuração de energia para qualificar uso real.
+Esse comando avalia atraso de até 100 us em 99% dos ciclos planejados, contando
+descartes como violações, e retorna `threshold_assessment`. O resultado continua
+descritivo: esses dois limites não certificam o ambiente. Uma qualificação real
+exige também hardware, duração, carga e configuração de energia acordados.
 
 ## Portabilidade e próximos passos
 

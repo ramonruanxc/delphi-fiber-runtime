@@ -57,7 +57,8 @@ index,deadline_us,start_us,finish_us
         r = self.report.analyze(self.fixture(), max_lateness_us=15, max_violation_fraction=0.5)
         self.assertEqual(r['violations'], 3)
         self.assertAlmostEqual(r['violation_fraction'], 0.6)
-        self.assertEqual(r['qualification'], 'failed')
+        self.assertEqual(r['threshold_assessment'], 'failed')
+        self.assertEqual(r['qualification'], 'descriptive')
 
     def test_partial_or_invalid_profile_rejected(self):
         for kwargs in [dict(max_lateness_us=10), dict(max_violation_fraction=0.1),
@@ -70,8 +71,20 @@ index,deadline_us,start_us,finish_us
         data = self.fixture().split('index,')[0].replace('started_cycles=3', 'started_cycles=0').replace('skipped_cycles=2', 'skipped_cycles=5')
         data += 'index,deadline_us,start_us,finish_us\n'
         r = self.report.analyze(data, max_lateness_us=100, max_violation_fraction=0)
-        self.assertEqual(r['qualification'], 'failed')
+        self.assertEqual(r['threshold_assessment'], 'failed')
         self.assertIsNone(r['start_lateness_us']['p99'])
+
+    def test_replayed_expired_and_out_of_horizon_cycles_rejected(self):
+        for old, new in [('1,1000,1010,1020', '1,1000,2500,2600'),
+                         ('1,1000,1010,1020', '1,1000,1010,3000'),
+                         ('5,5000,5000,5040', '5,5000,9000,9040')]:
+            with self.subTest(new=new), self.assertRaises(ValueError):
+                self.report.analyze(self.fixture().replace(old, new))
+
+    def test_threshold_pass_does_not_certify_environment(self):
+        r = self.report.analyze(self.fixture(), 100, 1)
+        self.assertEqual(r['threshold_assessment'], 'passed')
+        self.assertEqual(r['qualification'], 'descriptive')
 
 
 if __name__ == '__main__':

@@ -60,6 +60,8 @@ def analyze(text, max_lateness_us=None, max_violation_fraction=None):
             raise ValueError('cycle indices must increase within the planned horizon')
         if deadline != epoch + index * period:
             raise ValueError('sample deadline does not match the fixed-rate schedule')
+        if index != (start - epoch) // period or (previous_index and deadline <= previous_finish):
+            raise ValueError('replayed, expired or out-of-horizon cycle')
         if start < deadline or finish < start or start < previous_finish:
             raise ValueError('early, backward or overlapping execution')
         lateness.append(start - deadline)
@@ -80,7 +82,7 @@ def analyze(text, max_lateness_us=None, max_violation_fraction=None):
         result.update(violations=violations, violation_fraction=fraction,
                       profile=dict(max_lateness_us=max_lateness_us,
                                    max_violation_fraction=max_violation_fraction),
-                      qualification='passed' if fraction <= max_violation_fraction else 'failed')
+                      threshold_assessment='passed' if fraction <= max_violation_fraction else 'failed')
     return result
 
 
@@ -100,7 +102,7 @@ def main():
             args.output.write_text(rendered, encoding='utf-8')
         else:
             print(rendered, end='')
-        return 1 if result['qualification'] == 'failed' else 0
+        return 1 if result.get('threshold_assessment') == 'failed' else 0
     except (ValueError, OSError) as error:
         print(f'Invalid benchmark: {error}', file=sys.stderr)
         return 2

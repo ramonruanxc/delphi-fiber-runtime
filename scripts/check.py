@@ -1,5 +1,6 @@
 """Build and execute functional/negative checks; collect descriptive timing data."""
 import argparse
+import hashlib
 import importlib.util
 import json
 import os
@@ -27,10 +28,13 @@ def run(command, timeout=60, cwd=ROOT):
 def build(fpc, source, directory, defines=()):
     directory.mkdir(parents=True, exist_ok=True)
     binary = directory / (pathlib.Path(source).stem + ('.exe' if os.name == 'nt' else ''))
+    binary.unlink(missing_ok=True)
     output = run([fpc, '-B', '-Mdelphi', '-Sa', '-Cr', '-Co', '-Fusrc',
                   '-FU' + str(directory), '-o' + str(binary),
                   *['-d' + d for d in defines], source])
     (directory / 'compile.log').write_text(output, encoding='utf-8')
+    if not binary.is_file():
+        raise RuntimeError('Compiler returned success without creating executable: ' + str(binary))
     return binary
 
 
@@ -81,16 +85,22 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    (out / 'summary.json').unlink(missing_ok=True)
     summary = dict(platform=platform.platform(), machine=platform.machine(),
                    python=sys.version, compiler=run([args.fpc, '-iV']).strip(),
-                   commit=run(['git', 'rev-parse', 'HEAD']).strip(), checks={}, benchmarks={})
+                   target_cpu=run([args.fpc, '-iTP']).strip(),
+                   target_os=run([args.fpc, '-iTO']).strip(),
+                   commit=run(['git', 'rev-parse', 'HEAD']).strip(),
+                   dirty=bool(run(['git', 'status', '--porcelain', '--untracked-files=no']).strip()),
+                   build_flags=['-B', '-Mdelphi', '-Sa', '-Cr', '-Co'],
+                   power_mode='not recorded; shared-runner timings are descriptive', checks={}, benchmarks={})
     print(run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py']))
     for name in ('ScheduleTests', 'PlatformTests'):
         binary = build(args.fpc, 'tests/' + name + '.dpr', out / name)
         result = run([binary], timeout=30)
+        (out / name / 'run.log').write_text(result, encoding='utf-8')
         if 'PASS ' + name not in result:
             raise RuntimeError('Missing positive test marker: ' + name)
-        (out / name / 'run.log').write_text(result, encoding='utf-8')
         summary['checks'][name] = result.strip()
         print(result.strip())
     for define, assertion in [('PROVE_DRIFT', 'FIXED_RATE_NO_DRIFT'), ('PROVE_OVERLAP', 'NO_OVERLAP')]:
@@ -106,7 +116,9 @@ def main():
     report = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(report)
     binary = build(args.fpc, 'demo/PeriodicDemo.dpr', out / 'demo')
+    summary['binary_sha256'] = hashlib.sha256(binary.read_bytes()).hexdigest()
     for name, options in [('idle', ['--cycles', '2000']),
+                          ('short-work', ['--cycles', '1000', '--work-us', '100']),
                           ('overloaded', ['--cycles', '200', '--work-us', '2500'])]:
         csv_path = out / (name + '.csv')
         resources = benchmark(binary, options, csv_path)

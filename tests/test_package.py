@@ -10,6 +10,16 @@ SPEC.loader.exec_module(package)
 
 
 class PackageTests(unittest.TestCase):
+    def test_provenance_rejects_stale_dirty_or_changed_binary(self):
+        good = dict(commit='abc', dirty=False, binary_sha256='123', target_cpu='x', target_os='y')
+        package.validate_provenance(good, 'abc', False, '123', 'x', 'y')
+        for args in [('other', False, '123', 'x', 'y'), ('abc', True, '123', 'x', 'y'),
+                     ('abc', False, 'changed', 'x', 'y'), ('abc', False, '123', 'other', 'y')]:
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                package.validate_provenance(good, *args)
+        with self.assertRaises(ValueError):
+            package.validate_provenance(dict(good, dirty=True), 'abc', False, '123', 'x', 'y')
+
     def test_archive_preserves_source_paths_and_excludes_local_files(self):
         with tempfile.TemporaryDirectory(prefix='consumer with spaces ') as temp:
             root = pathlib.Path(temp)

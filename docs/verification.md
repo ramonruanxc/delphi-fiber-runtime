@@ -22,8 +22,10 @@ missed by a late wakeup. It never prints or grows the sample array inside the
 measurement window. `--work-us` is a deliberate CPU workload for overload tests.
 
 The report checks metadata, exact deadline phase, ordering, non-overlap and sample
-counts before calculating nearest-rank percentiles. It includes skipped cycles in
-the denominator of explicit qualification profiles. The idle and overloaded
+counts before calculating nearest-rank percentiles. It rejects replayed cycles
+and deadlines crossed during a preceding invocation. It includes skipped cycles
+in threshold assessments; these do not certify hardware/workload qualification.
+The idle, short CPU work and overloaded
 scenarios in shared CI are descriptive, without an agreed jitter threshold.
 
 Artifacts contain raw CSV, report JSON, compilation logs and environment/commit

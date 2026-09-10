@@ -12,6 +12,14 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+def validate_provenance(summary, commit, dirty, binary_hash, target_cpu, target_os):
+    if dirty or summary.get('dirty') is not False or summary.get('commit') != commit:
+        raise ValueError('packaging requires checks from this exact clean commit')
+    if (summary.get('binary_sha256'), summary.get('target_cpu'), summary.get('target_os')) != (
+            binary_hash, target_cpu, target_os):
+        raise ValueError('native binary or compiler target differs from verified evidence')
+
+
 def create_source(root, destination, files):
     root = root.resolve()
     entries = []
@@ -36,6 +44,14 @@ def main():
     args = parser.parse_args()
     out = args.out.resolve()
     out.mkdir(parents=True, exist_ok=True)
+    checks = args.checks.resolve()
+    summary = json.loads((checks / 'summary.json').read_text(encoding='utf-8'))
+    binary = checks / 'demo' / ('PeriodicDemo.exe' if os.name == 'nt' else 'PeriodicDemo')
+    target_cpu = subprocess.check_output([args.fpc, '-iTP'], text=True).strip()
+    target_os = subprocess.check_output([args.fpc, '-iTO'], text=True).strip()
+    commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
+    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=ROOT, text=True).strip())
+    validate_provenance(summary, commit, dirty, hashlib.sha256(binary.read_bytes()).hexdigest(), target_cpu, target_os)
     files = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     source_zip = out / 'delphi-fiber-runtime-source.zip'
     create_source(ROOT, source_zip, [name for name in files if name])
@@ -51,11 +67,7 @@ def main():
                                 check=True, timeout=10, capture_output=True, text=True)
         if '# format=periodic-v1' not in result.stdout:
             raise RuntimeError('clean consumer produced no benchmark data')
-    checks = args.checks.resolve()
-    summary = json.loads((checks / 'summary.json').read_text(encoding='utf-8'))
     # Machine reported by Python can differ from compiler target (e.g. Win32 on x64).
-    target_cpu = subprocess.check_output([args.fpc, '-iTP'], text=True).strip()
-    target_os = subprocess.check_output([args.fpc, '-iTO'], text=True).strip()
     native_zip = out / f'delphi-fiber-runtime-{target_os}-{target_cpu}.zip'
     with zipfile.ZipFile(native_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         binary = checks / 'demo' / ('PeriodicDemo.exe' if os.name == 'nt' else 'PeriodicDemo')
