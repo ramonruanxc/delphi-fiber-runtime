@@ -7,6 +7,7 @@ const
   EV_CLEAR = $20;
   EV_ERROR = $4000;
   NOTE_ABSOLUTE = $8;
+  NOTE_CRITICAL = $20;
   NOTE_MACHTIME = $100;
   NOTE_TRIGGER = $01000000;
   EINTR = 4;
@@ -96,7 +97,8 @@ begin
     Change.Ident := 2;
     Change.Filter := EVFILT_TIMER;
     Change.Flags := EV_ADD or EV_ENABLE or EV_ONESHOT;
-    Change.FFlags := NOTE_ABSOLUTE or NOTE_MACHTIME;
+    { Ask the kernel to reduce timer coalescing; no realtime thread priority. }
+    Change.FFlags := NOTE_ABSOLUTE or NOTE_MACHTIME or NOTE_CRITICAL;
     Change.Data := Scale(ADeadlineUs, Int64(FDenom) * 1000, FNumer, True);
     SubmitEvent(FTimer, Change);
     repeat
@@ -122,5 +124,5 @@ end;
 
 function TPlatformTimer.BackendName: string;
 begin
-  Result := 'darwin-mach-kevent64-absolute';
+  Result := 'darwin-mach-kevent64-absolute-critical';
 end;
