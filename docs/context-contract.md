@@ -47,9 +47,12 @@ exception object or unwinding into a native caller. Cancellation uses fsCancelle
 Completion returns control to the carrier. Task-local data is not native TLS:
 ordinary Pascal threadvars remain shared by tasks on one carrier.
 
-Destruction is permitted only for never-started or terminal tasks. Destroying a
+Destruction is permitted only for never-started or terminal tasks. A
+BeforeDestruction guard rejects invalid calls before cleanup begins. Destroying a
 running/suspended task raises EFiberUsage and preserves it, so live stacks are
 never silently discarded. Runtime destruction requires all tasks already freed.
+Do not use FreeAndNil for an operation expected to be refused: that helper clears
+the reference before Free.
 
 ## RTL and floating-point restrictions
 
@@ -61,7 +64,8 @@ SEH context switching remains delegated to native Windows fibers.
 
 Resume/Yield during active exception handling is rejected when detected.
 Suspending from exception handlers or during unwinding remains prohibited even
-when an RTL cannot detect it. Signal/async-exception delivery during the tiny
+when an RTL cannot detect it. Yield from allocator, backtrace or error hooks is
+also unsupported. Signal/async-exception delivery during the tiny
 chain-switch interval is not supported. Never yield while holding a native lock.
 The experiment does not claim transparent preservation of every RTL threadvar.
 

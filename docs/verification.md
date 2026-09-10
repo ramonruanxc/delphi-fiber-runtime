@@ -52,3 +52,36 @@ This milestone measures one persistent executor. Comparison with the existing
 pool/service-host implementations, mixed service/event loads, many-service scaling,
 lost-wakeup stress under full runtime traffic and context/RTL tests belong to
 subsequent milestones. No leak-freedom claim is inferred from resource churn.
+
+## Context experiment additions
+
+The second milestone keeps all periodic checks and adds a native C suite on Unix,
+Pascal ContextTests and ContextDemo. The driver builds static helper objects and
+archives from the pinned upstream assembly and requires fresh outputs at every
+stage; an old test executable cannot certify a compiler that produced nothing.
+
+Context tests interleave protected Pascal bodies and preserve local data, managed
+values, stack bounds and floating-point rounding. They exercise callback failures,
+cooperative cancellation and rejected destruction of suspended tasks. A different
+thread must be refused without mutating task state. The identity mutation must
+fail with CONTEXT_TASK_IDENTITY. Unix's SJLJ isolation mutation must fail with
+CONTEXT_RTL_ISOLATION before throwing through a corrupt chain. Windows uses native
+SEH instead, so that particular mutation is explicitly not applicable there.
+
+ContextDemo records 16 completed tasks and 16,000 yields on one carrier, plus a
+separate cancelled task whose finalizer must run once. Cancellation is outside the
+timing window. Timing includes the demo's resume loop and minimal callback work;
+it is descriptive, and no relation to the periodic deadline tolerance is inferred.
+The requested 256 KiB per task is a stack reservation parameter, not a measurement
+of committed memory. Guard pages add overhead; no overflow-recovery or leak-freedom
+claim follows from these functional tests.
+
+The source package builds both demos in a clean consumer. Each native archive
+contains both demos, their evidence, the MIT notice and the Boost Software License.
+Both executable hashes must match the same clean revision's check summary.
+
+FPC 3.2.2 context support is an experiment with a narrow RTL adapter. Active
+exception-handler/unwind suspension, allocator/error-hook suspension, asynchronous
+exceptions/signals during handoff, nondefault shadow-stack configurations and
+unvalidated compiler versions remain outside its qualification. See the
+[context contract](context-contract.md) for the ownership and cancellation rules.
