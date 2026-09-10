@@ -46,12 +46,12 @@ type
   end;
 ```
 
-- [ ] Test before implementation; save the expected red result.
-- [ ] Verify 999 us refuses, 1040 us admits index 1/deadline 1000, a second acquire while active refuses, Complete(3200) skips 2 and 3 and NextDeadlineUs returns 4000.
-- [ ] Verify idle late acquisition admits only latest due index; cancellation is sticky; completion at exact boundary skips that boundary; backward time, invalid period, overflow and unmatched completion fail without corrupting state.
-- [ ] Run `fpc -B -Mdelphi -Sa -Cr -Co -Fusrc -FUbuild/core -obuild/ScheduleTests.exe tests/ScheduleTests.dpr`, then the executable (extension differs on Unix).
-- [ ] Add narrowly targeted compile-time negative variants `PROVE_DRIFT` and `PROVE_OVERLAP`; failures have distinct named assertions. Normal builds never enable them.
-- [ ] Self-review and commit only owned files. Independent reviewer checks contract and quality.
+- [x] Test before implementation; save the expected red result.
+- [x] Verify 999 us refuses, 1040 us admits index 1/deadline 1000, a second acquire while active refuses, Complete(3200) skips 2 and 3 and NextDeadlineUs returns 4000.
+- [x] Verify idle late acquisition admits only latest due index; cancellation is sticky; completion at exact boundary skips that boundary; backward time, invalid period, overflow and unmatched completion fail without corrupting state.
+- [x] Run `fpc -B -Mdelphi -Sa -Cr -Co -Fusrc -FUbuild/core -obuild/ScheduleTests.exe tests/ScheduleTests.dpr`, then the executable (extension differs on Unix).
+- [x] Add narrowly targeted compile-time negative variants `PROVE_DRIFT` and `PROVE_OVERLAP`; failures have distinct named assertions. Normal builds never enable them.
+- [x] Self-review and commit only owned files. Independent reviewer checks contract and quality.
 
 ## Task 2: Native timer adapter
 
@@ -59,11 +59,11 @@ Files: `src/FiberRuntime.Platform.pas`, `native/*` if needed, `tests/PlatformTes
 
 Produces `TPlatformTimer` with `Create`, `Destroy`, `NowUs: Int64`, `WaitUntil(ADeadlineUs: Int64): Boolean`, `Cancel`, `BackendName: string`. `WaitUntil` returns false on sticky cancellation and true only after the monotonic deadline. One waiting owner, concurrent Cancel supported. Caller must join before destruction. Constructor errors release partial resources.
 
-- [ ] Write tests for monotonic readings, no early return, past deadline, cancellation before wait, cancellation from a native worker while waiting, and cleanup.
-- [ ] Implement native event-driven waits. Windows: waitable timer plus cancellation event, using remaining time from QPC rather than UTC absolute deadlines. Linux: monotonic timerfd/eventfd with poll. macOS: native monotonic timer/wait and explicit cancellation notification. Avoid polling sleeps.
-- [ ] If helper C is necessary, define a small opaque-handle ABI; keep allocations and errors on their originating side. Provide exact build commands to the integration owner.
-- [ ] Compile/run on locally available systems and let CI exercise the others. Report unsupported behavior rather than guessing a pass.
-- [ ] Commit owned files and submit for independent review.
+- [x] Write tests for monotonic readings, no early return, past deadline, cancellation before wait, cancellation from a native worker while waiting, and cleanup.
+- [x] Implement native event-driven waits. Windows: waitable timer plus cancellation event, using remaining time from QPC rather than UTC absolute deadlines. Linux: monotonic timerfd/eventfd with poll. macOS: native monotonic timer/wait and explicit cancellation notification. Avoid polling sleeps.
+- [x] If helper C is necessary, define a small opaque-handle ABI; keep allocations and errors on their originating side. Provide exact build commands to the integration owner.
+- [x] Compile/run on locally available systems and let CI exercise the others. Report unsupported behavior rather than guessing a pass.
+- [x] Commit owned files and submit for independent review.
 
 ## Task 3: Benchmark, build runner and CI/CD
 
@@ -71,12 +71,12 @@ Files: `demo/PeriodicDemo.dpr`, `scripts/check.py`, `scripts/report.py`, `tests/
 
 Consumes the exact schedule and timer interfaces above.
 
-- [ ] Build/check automation creates isolated output directories per variant; compilation failure and timeout are never negative-test success.
-- [ ] Benchmark accepts duration in cycles, period in microseconds and callback workload, preallocates measurements, and prints CSV only after timing. Check no overlap through the schedule; record epoch, cycle index, deadline, start and finish, started/skipped totals and backend.
-- [ ] Reporter rejects malformed/incomplete/non-monotonic data, computes actual interval and lateness distributions, includes skipped cycles in counts and emits JSON. Without an explicit profile it labels results descriptive.
-- [ ] CI matrix installs FPC on Windows, Linux and macOS, builds tests and demo, runs strict negative checks and uploads reports. Add separate compiler jobs only with actual toolchains.
-- [ ] Tag-driven CD uses successful checks on that exact revision, packages source plus platform demo/native artifacts, checksums and a documented support matrix. Test packaging from a clean consumer path with spaces.
-- [ ] Compile actual Delphi targets available locally; report limitations if they cannot run.
+- [x] Build/check automation creates isolated output directories per variant; compilation failure and timeout are never negative-test success.
+- [x] Benchmark accepts duration in cycles, period in microseconds and callback workload, preallocates measurements, and prints CSV only after timing. Check no overlap through the schedule; record epoch, cycle index, deadline, start and finish, started/skipped totals and backend.
+- [x] Reporter rejects malformed/incomplete/non-monotonic data, computes actual interval and lateness distributions, includes skipped cycles in counts and emits JSON. Without an explicit profile it labels results descriptive.
+- [x] CI matrix installs FPC on Windows, Linux and macOS, builds tests and demo, runs strict negative checks and uploads reports. Add separate compiler jobs only with actual toolchains.
+- [x] Tag-driven CD uses successful checks on that exact revision, packages source plus platform demo/native artifacts, checksums and a documented support matrix. Test packaging from a clean consumer path with spaces.
+- [x] Compile actual Delphi targets available locally; report limitations if they cannot run.
 
 ## Task 4: Evidence, review and publication
 

@@ -1,0 +1,204 @@
+{
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "machine": "arm64",
+  "python": "3.12.10 (v3.12.10:0cc81280367, Apr  8 2025, 08:46:59) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "compiler": "3.2.2",
+  "target_cpu": "aarch64",
+  "target_os": "darwin",
+  "commit": "e6ffa8fd800d1ec925cd62d56b5387d8bc143287",
+  "dirty": false,
+  "build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co"
+  ],
+  "power_mode": "not recorded; shared-runner timings are descriptive",
+  "checks": {
+    "ScheduleTests": "PASS ScheduleTests checks=55",
+    "PlatformTests": "Backend: darwin-mach-kevent64-absolute-critical\nPASS PlatformTests",
+    "PROVE_DRIFT": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: FIXED_RATE_NO_DRIFT"
+    },
+    "PROVE_OVERLAP": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: NO_OVERLAP"
+    }
+  },
+  "benchmarks": {
+    "idle": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "darwin-mach-kevent64-absolute-critical",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "144904339",
+        "period_us": "1000",
+        "planned_cycles": "2000",
+        "started_cycles": "2000",
+        "skipped_cycles": "0",
+        "work_us": "0"
+      },
+      "planned_cycles": 2000,
+      "started_cycles": 2000,
+      "skipped_cycles": 0,
+      "start_lateness_us": {
+        "min": 12,
+        "p50": 18,
+        "p95": 339,
+        "p99": 386,
+        "p999": 485,
+        "max": 511,
+        "mean": 43.5295
+      },
+      "callback_duration_us": {
+        "min": 0,
+        "p50": 0,
+        "p95": 1,
+        "p99": 1,
+        "p999": 1,
+        "max": 6,
+        "mean": 0.16
+      },
+      "inter_start_us": {
+        "min": 554,
+        "p50": 1000,
+        "p95": 1016,
+        "p99": 1166,
+        "p999": 1471,
+        "max": 1487,
+        "mean": 999.991995997999
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 42,
+        "sampled_peaks": {
+          "rss_bytes": 1998848,
+          "vms_bytes": 420448960512,
+          "native_threads": 1,
+          "cpu_seconds": 0.016292749000000002
+        },
+        "elapsed_seconds": 2.0282606250000015,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "short-work": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "darwin-mach-kevent64-absolute-critical",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "146938032",
+        "period_us": "1000",
+        "planned_cycles": "1000",
+        "started_cycles": "982",
+        "skipped_cycles": "18",
+        "work_us": "100"
+      },
+      "planned_cycles": 1000,
+      "started_cycles": 982,
+      "skipped_cycles": 18,
+      "start_lateness_us": {
+        "min": 12,
+        "p50": 20,
+        "p95": 321,
+        "p99": 535,
+        "p999": 903,
+        "max": 903,
+        "mean": 66.050916496945
+      },
+      "callback_duration_us": {
+        "min": 100,
+        "p50": 100,
+        "p95": 100,
+        "p99": 108,
+        "p999": 509,
+        "max": 509,
+        "mean": 101.06415478615071
+      },
+      "inter_start_us": {
+        "min": 136,
+        "p50": 1000,
+        "p95": 1042,
+        "p99": 1514,
+        "p999": 12521,
+        "max": 12521,
+        "mean": 1016.6472986748216
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 22,
+        "sampled_peaks": {
+          "rss_bytes": 1966080,
+          "vms_bytes": 420448960512,
+          "native_threads": 1,
+          "cpu_seconds": 0.10466412600000001
+        },
+        "elapsed_seconds": 1.0390767500000209,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "overloaded": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "darwin-mach-kevent64-absolute-critical",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "147979871",
+        "period_us": "1000",
+        "planned_cycles": "200",
+        "started_cycles": "65",
+        "skipped_cycles": "135",
+        "work_us": "2500"
+      },
+      "planned_cycles": 200,
+      "started_cycles": 65,
+      "skipped_cycles": 135,
+      "start_lateness_us": {
+        "min": 14,
+        "p50": 76,
+        "p95": 271,
+        "p99": 529,
+        "p999": 529,
+        "max": 529,
+        "mean": 122.95384615384616
+      },
+      "callback_duration_us": {
+        "min": 2500,
+        "p50": 2500,
+        "p95": 2500,
+        "p99": 2509,
+        "p999": 2509,
+        "max": 2509,
+        "mean": 2500.1384615384613
+      },
+      "inter_start_us": {
+        "min": 2782,
+        "p50": 3000,
+        "p95": 3240,
+        "p99": 4023,
+        "p999": 4023,
+        "max": 4023,
+        "mean": 3043.015625
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 6,
+        "sampled_peaks": {
+          "rss_bytes": 1949696,
+          "vms_bytes": 420448960512,
+          "native_threads": 1,
+          "cpu_seconds": 0.13279929000000001
+        },
+        "elapsed_seconds": 0.2383468339999979,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    }
+  },
+  "binary_sha256": "ee8d4ad6c54e304d1843578df78e9217097434c2d64f6d462ae7a7af77a366d1"
+}
