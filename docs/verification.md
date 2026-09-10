@@ -1,0 +1,50 @@
+# Verification
+
+Run `python scripts/check.py`, then `python scripts/package.py` from a clean clone.
+The runner builds each variant into its own directory with FPC range/overflow
+checks (`-B -Mdelphi -Sa -Cr -Co`). Missing positive markers, compilation failures,
+unexpected exceptions, crashes and timeouts fail the run.
+
+The schedule suite covers no drift, late admission, no overlap, exact boundaries,
+cancellation, invalid construction, backward time and atomic overflow recovery.
+`PROVE_DRIFT` and `PROVE_OVERLAP` must terminate with exit 1 and exactly their named
+assertion; an absent diagnostic cannot turn a negative test green. Python tests
+also challenge this classifier directly.
+
+Native tests cover monotonic readings, past/future deadlines, no early return,
+sticky cancellation, cross-thread cancellation and repeated resource lifetimes.
+Their timing bounds detect hangs; they are not a jitter qualification profile.
+
+The benchmark records the first deadline at epoch + 1000 us. It stops admitting
+cycles at the end of its planned horizon, finishes any already active callback,
+and counts every unstarted planned cycle as skipped, including trailing cycles
+missed by a late wakeup. It never prints or grows the sample array inside the
+measurement window. `--work-us` is a deliberate CPU workload for overload tests.
+
+The report checks metadata, exact deadline phase, ordering, non-overlap and sample
+counts before calculating nearest-rank percentiles. It includes skipped cycles in
+the denominator of explicit qualification profiles. The idle and overloaded
+scenarios in shared CI are descriptive, without an agreed jitter threshold.
+
+Artifacts contain raw CSV, report JSON, compilation logs and environment/commit
+metadata. Optional psutil sampling reports observed RSS/VMS, thread count and CPU
+time; it can miss peaks, undercount final CPU and influence execution. VMS is not
+portable committed-memory accounting. Allocation counts and separate committed /
+reserved memory accounting remain future instrumentation.
+
+The release workflow runs the same matrix on the tag revision before publishing
+source and native demo archives with SHA-256 checksums. A source archive is also
+extracted into a clean temporary directory with spaces, compiled and executed.
+
+## Evidence and limits
+
+Local and hosted results are recorded under `docs/evidence/` as they become
+available. GitHub Actions provides the full per-revision build artifacts.
+The installed Delphi edition prints `This version of the product does not
+support command line compiling.` while returning exit code 0; that is recorded
+as unavailable, not a successful Delphi build.
+
+This milestone measures one persistent executor. Comparison with the existing
+pool/service-host implementations, mixed service/event loads, many-service scaling,
+lost-wakeup stress under full runtime traffic and context/RTL tests belong to
+subsequent milestones. No leak-freedom claim is inferred from resource churn.

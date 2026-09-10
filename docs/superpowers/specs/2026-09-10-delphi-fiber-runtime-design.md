@@ -4,7 +4,7 @@ Date: 2026-09-10
 
 Status: approved design baseline. Implementation progress and evidence are tracked separately in the milestone plan and verification documents.
 
-Working repository name: `delphi-fiber-runtime`. The name is a proposal, not an existing GitHub publication.
+Repository: [delphi-fiber-runtime](https://github.com/ramonruanxc/delphi-fiber-runtime). Implementation status is recorded separately from this approved design.
 
 ## 1. Objective
 

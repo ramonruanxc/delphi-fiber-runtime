@@ -1,0 +1,40 @@
+name: Release
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: verified-*
+          path: release-input
+      - name: Collect exact-revision archives
+        shell: python
+        run: |
+          import hashlib, pathlib, shutil
+          destination = pathlib.Path('release-assets')
+          destination.mkdir()
+          for source in pathlib.Path('release-input').glob('*/dist/*.zip'):
+              target = destination / source.name
+              # Source ZIP timestamps can differ by checkout, so keep one source archive.
+              if not target.exists():
+                  shutil.copy2(source, target)
+          archives = sorted(destination.glob('*.zip'))
+          if len(archives) != 4:
+              raise RuntimeError(f'Expected source plus three native archives, got {len(archives)}')
+          (destination / 'SHA256SUMS.txt').write_text(''.join(
+              hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in archives))
+      - name: Publish prototype release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" release-assets/* --verify-tag --prerelease --title "$GITHUB_REF_NAME — periodic prototype" --notes-file docs/release-notes.md
