@@ -35,7 +35,8 @@ python scripts/check.py
 python scripts/package.py
 ```
 
-O primeiro comando compila, executa os testes e mede três cenários. Os dados
+Execute esses scripts a partir de um clone Git. O primeiro comando compila,
+executa os testes e mede três cenários. Os dados
 ficam em `build/check/`; o segundo cria os pacotes em `dist/` e compila um
 consumidor extraído em um caminho com espaços. O empacotamento usa arquivos
 rastreados pelo Git; execute a partir de um clone do repositório.

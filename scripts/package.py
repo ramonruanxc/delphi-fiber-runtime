@@ -70,6 +70,7 @@ def main():
     # Machine reported by Python can differ from compiler target (e.g. Win32 on x64).
     native_zip = out / f'delphi-fiber-runtime-{target_os}-{target_cpu}.zip'
     with zipfile.ZipFile(native_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
+        archive.write(ROOT / 'LICENSE', 'LICENSE')
         binary = checks / 'demo' / ('PeriodicDemo.exe' if os.name == 'nt' else 'PeriodicDemo')
         archive.write(binary, binary.name)
         for path in checks.glob('*.json'):
@@ -78,6 +79,9 @@ def main():
             archive.write(path, 'evidence/' + path.name)
         archive.writestr('BUILD.json', json.dumps(dict(commit=summary['commit'],
                           compiler=summary['compiler'], target_os=target_os, target_cpu=target_cpu), indent=2))
+    with zipfile.ZipFile(native_zip) as archive:
+        if archive.read('LICENSE') != (ROOT / 'LICENSE').read_bytes():
+            raise RuntimeError('native archive copyright notice differs from project license')
     hashes = [hashlib.sha256(path.read_bytes()).hexdigest() + '  ' + path.name
               for path in (source_zip, native_zip)]
     (out / 'SHA256SUMS.txt').write_text('\n'.join(hashes) + '\n', encoding='utf-8')
