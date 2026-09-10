@@ -1,0 +1,236 @@
+{
+  "platform": "Windows-11-10.0.26200-SP0",
+  "machine": "AMD64",
+  "python": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "compiler": "3.2.2",
+  "target_cpu": "i386",
+  "target_os": "win32",
+  "commit": "4a170754e473db2f22b222caa60a12948c7f9fe2",
+  "dirty": false,
+  "build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co"
+  ],
+  "power_mode": "not recorded; shared-runner timings are descriptive",
+  "checks": {
+    "ScheduleTests": "PASS ScheduleTests checks=55",
+    "PlatformTests": "Backend: windows-qpc-waitable-high-resolution\nPASS PlatformTests",
+    "ContextTests": "PASS ContextTests",
+    "PROVE_DRIFT": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: FIXED_RATE_NO_DRIFT"
+    },
+    "PROVE_OVERLAP": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: NO_OVERLAP"
+    },
+    "CONTEXT_PROVE_RTL": "not applicable: Windows uses native SEH, not the Unix SJLJ adapter",
+    "CONTEXT_PROVE_IDENTITY": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: CONTEXT_TASK_IDENTITY"
+    }
+  },
+  "benchmarks": {
+    "idle": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "windows-qpc-waitable-high-resolution",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "7594711579",
+        "period_us": "1000",
+        "planned_cycles": "2000",
+        "started_cycles": "1992",
+        "skipped_cycles": "8",
+        "work_us": "0"
+      },
+      "planned_cycles": 2000,
+      "started_cycles": 1992,
+      "skipped_cycles": 8,
+      "start_lateness_us": {
+        "min": 9,
+        "p50": 288,
+        "p95": 518,
+        "p99": 631,
+        "p999": 926,
+        "max": 934,
+        "mean": 288.08032128514054
+      },
+      "callback_duration_us": {
+        "min": 0,
+        "p50": 0,
+        "p95": 1,
+        "p99": 1,
+        "p999": 1,
+        "max": 6,
+        "mean": 0.21686746987951808
+      },
+      "inter_start_us": {
+        "min": 478,
+        "p50": 1021,
+        "p95": 1096,
+        "p99": 1497,
+        "p999": 2052,
+        "max": 2055,
+        "mean": 1004.0416875941738
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 78,
+        "sampled_peaks": {
+          "rss_bytes": 7745536,
+          "vms_bytes": 1916928,
+          "native_threads": 4,
+          "cpu_seconds": 0.078125
+        },
+        "elapsed_seconds": 2.6719999999995707,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "short-work": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "windows-qpc-waitable-high-resolution",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "7596790621",
+        "period_us": "1000",
+        "planned_cycles": "1000",
+        "started_cycles": "987",
+        "skipped_cycles": "13",
+        "work_us": "100"
+      },
+      "planned_cycles": 1000,
+      "started_cycles": 987,
+      "skipped_cycles": 13,
+      "start_lateness_us": {
+        "min": 11,
+        "p50": 322,
+        "p95": 605,
+        "p99": 847,
+        "p999": 995,
+        "max": 995,
+        "mean": 325.10131712259374
+      },
+      "callback_duration_us": {
+        "min": 100,
+        "p50": 100,
+        "p95": 100,
+        "p99": 100,
+        "p999": 158,
+        "max": 158,
+        "mean": 100.07801418439716
+      },
+      "inter_start_us": {
+        "min": 488,
+        "p50": 1021,
+        "p95": 1229,
+        "p99": 1660,
+        "p999": 2521,
+        "max": 2521,
+        "mean": 1013.1622718052738
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 37,
+        "sampled_peaks": {
+          "rss_bytes": 7303168,
+          "vms_bytes": 1818624,
+          "native_threads": 4,
+          "cpu_seconds": 0.140625
+        },
+        "elapsed_seconds": 1.0619999999998981,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "overloaded": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "windows-qpc-waitable-high-resolution",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "7597875536",
+        "period_us": "1000",
+        "planned_cycles": "200",
+        "started_cycles": "64",
+        "skipped_cycles": "136",
+        "work_us": "2500"
+      },
+      "planned_cycles": 200,
+      "started_cycles": 64,
+      "skipped_cycles": 136,
+      "start_lateness_us": {
+        "min": 22,
+        "p50": 333,
+        "p95": 586,
+        "p99": 715,
+        "p999": 715,
+        "max": 715,
+        "mean": 319.28125
+      },
+      "callback_duration_us": {
+        "min": 2500,
+        "p50": 2500,
+        "p95": 2500,
+        "p99": 2536,
+        "p999": 2536,
+        "max": 2536,
+        "mean": 2500.71875
+      },
+      "inter_start_us": {
+        "min": 2525,
+        "p50": 3054,
+        "p95": 3589,
+        "p99": 4254,
+        "p999": 4254,
+        "max": 4254,
+        "mean": 3128.6666666666665
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "psutil sampled every 20ms",
+        "observations": 8,
+        "sampled_peaks": {
+          "rss_bytes": 7221248,
+          "vms_bytes": 1785856,
+          "native_threads": 4,
+          "cpu_seconds": 0.125
+        },
+        "elapsed_seconds": 0.23400000000037835,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    }
+  },
+  "context_build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co",
+    "-Ct",
+    "-O2"
+  ],
+  "binary_sha256": "45735b0a3e6df9b658644ffa07f6d4c0fa331388492b85354b05111f3128923e",
+  "context_binary_sha256": "382687d1ddca7ac8adc2c05ce74a9fc3c5f0b4ff3e77cddc1b2d55accb2777d4",
+  "context_experiment": {
+    "format": "context-demo-v1",
+    "backend": "windows-native-fibers-float-switch",
+    "tasks": 16,
+    "completed": 16,
+    "yields": 16000,
+    "resume_calls": 16016,
+    "elapsed_us": 4115,
+    "requested_stack_bytes_per_task": 262144,
+    "carrier_threads": 1,
+    "cancelled": 1,
+    "cancel_cleanup_count": 1,
+    "context_transfers": 32032,
+    "qualification": "descriptive",
+    "mean_us_per_resume_roundtrip": 0.2569305694305694
+  }
+}

@@ -1,0 +1,5 @@
+# Keep upstream source/license bytes identical on every checkout.
+boost/*.S -text
+boost/LICENSE_1_0.txt -text
+# Upstream ARM64 make file ends with an extra blank line; retain those bytes.
+boost/make_arm64_aapcs_macho_gas.S whitespace=-blank-at-eof

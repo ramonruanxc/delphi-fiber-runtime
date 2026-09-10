@@ -28,6 +28,31 @@ do not qualify a run spanning system sleep. The OS clock/timer suspend semantics
 differ. This limitation must be resolved before support includes resume behavior.
 
 The portable schedule uses a conservative Pascal API, but historical compilers
-and backend ABI combinations still require builds. Fiber context switching,
-task-local storage, managed values across suspension and task migration have no
-support claim in this prototype.
+and backend ABI combinations still require builds.
+
+## Context experiment (separate qualification)
+
+| Compiler / target | Context backend | Evidence |
+|---|---|---|
+| FPC 3.2.2 Windows i386, default SEH | Windows fibers with floating-point switching | Local functional tests and demo passed |
+| FPC 3.2.2 Windows x64, default SEH | Windows fibers with floating-point switching | Local tests and hosted full checks / clean package passed |
+| FPC 3.2.2 Linux x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Local WSL and hosted full checks / clean packages passed |
+| FPC 3.2.2 macOS ARM64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full checks and clean package passed |
+| macOS x64 | Matching upstream assembly included | Execution not yet qualified |
+| Other FPC versions; Delphi | Additional RTL adapter required | Experimental context unit refuses compilation |
+
+See the [context evidence](evidence/context-2026-09-10.md) for the exact revision,
+flags and measurements. Context guards check FPC version and the expected Windows SEH configuration.
+Unix requires cthreads first; custom thread managers are unqualified. Windows
+requires ConvertThreadToFiberEx/CreateFiberEx and refuses attachment to an already
+fiber-converted host thread. Tests qualify the shipped default build configuration,
+not nondefault shadow-stack, sanitizer or signal/async-exception behavior.
+
+The Windows stack metadata uses the native stack top and rounded reservation
+estimate. Unix exposes the actual usable mmap interval excluding guard pages.
+Neither is a measurement of committed memory or a claim of stack-overflow recovery.
+
+Managed locals and explicit LocalValue are exercised by context tests; ordinary
+threadvars remain shared. Exception-handler/unwind suspension, task migration,
+transparent blocking calls and full timer/channel/service integration remain
+outside this milestone. See [context contract](context-contract.md).

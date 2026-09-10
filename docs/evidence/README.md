@@ -1,5 +1,8 @@
 # First prototype measurements — 2026-09-10
 
+The second milestone has its own [context experiment evidence](context-2026-09-10.md).
+The original periodic measurements below are retained unchanged.
+
 These are short descriptive observations, not benchmarks that certify a temporal
 SLA or establish a fair performance ranking of operating systems. Each row is a
 different environment. The full JSON files record revision, compiler, native

@@ -1,0 +1,225 @@
+{
+  "platform": "Linux-5.15.167.4-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "machine": "x86_64",
+  "python": "3.12.3 (main, Jun 19 2026, 12:46:00) [GCC 13.3.0]",
+  "compiler": "3.2.2",
+  "target_cpu": "x86_64",
+  "target_os": "linux",
+  "commit": "4a170754e473db2f22b222caa60a12948c7f9fe2",
+  "dirty": false,
+  "build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co"
+  ],
+  "power_mode": "not recorded; shared-runner timings are descriptive",
+  "checks": {
+    "ScheduleTests": "PASS ScheduleTests checks=55",
+    "PlatformTests": "Backend: linux-monotonic-timerfd-eventfd\nPASS PlatformTests",
+    "ContextTests": "PASS ContextTests",
+    "PROVE_DRIFT": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: FIXED_RATE_NO_DRIFT"
+    },
+    "PROVE_OVERLAP": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: NO_OVERLAP"
+    },
+    "CONTEXT_PROVE_IDENTITY": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: CONTEXT_TASK_IDENTITY"
+    },
+    "CONTEXT_PROVE_RTL": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: CONTEXT_RTL_ISOLATION"
+    },
+    "CONTEXT_TEST_NO_CTHREADS": "PASS ContextTests no-cthreads rejection"
+  },
+  "benchmarks": {
+    "idle": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "linux-monotonic-timerfd-eventfd",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "6680179",
+        "period_us": "1000",
+        "planned_cycles": "2000",
+        "started_cycles": "2000",
+        "skipped_cycles": "0",
+        "work_us": "0"
+      },
+      "planned_cycles": 2000,
+      "started_cycles": 2000,
+      "skipped_cycles": 0,
+      "start_lateness_us": {
+        "min": 11,
+        "p50": 19,
+        "p95": 32,
+        "p99": 43,
+        "p999": 91,
+        "max": 157,
+        "mean": 20.7945
+      },
+      "callback_duration_us": {
+        "min": 0,
+        "p50": 0,
+        "p95": 1,
+        "p99": 1,
+        "p999": 1,
+        "max": 1,
+        "mean": 0.138
+      },
+      "inter_start_us": {
+        "min": 868,
+        "p50": 1000,
+        "p95": 1013,
+        "p99": 1024,
+        "p999": 1098,
+        "max": 1140,
+        "mean": 999.9974987493747
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "unavailable",
+        "observations": 0,
+        "sampled_peaks": null,
+        "elapsed_seconds": 2.073474774000001,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "short-work": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "linux-monotonic-timerfd-eventfd",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "8765109",
+        "period_us": "1000",
+        "planned_cycles": "1000",
+        "started_cycles": "1000",
+        "skipped_cycles": "0",
+        "work_us": "100"
+      },
+      "planned_cycles": 1000,
+      "started_cycles": 1000,
+      "skipped_cycles": 0,
+      "start_lateness_us": {
+        "min": 11,
+        "p50": 17,
+        "p95": 30,
+        "p99": 33,
+        "p999": 39,
+        "max": 158,
+        "mean": 18.958
+      },
+      "callback_duration_us": {
+        "min": 100,
+        "p50": 100,
+        "p95": 100,
+        "p99": 100,
+        "p999": 103,
+        "max": 111,
+        "mean": 100.015
+      },
+      "inter_start_us": {
+        "min": 868,
+        "p50": 1000,
+        "p95": 1012,
+        "p99": 1019,
+        "p999": 1144,
+        "max": 1144,
+        "mean": 999.986986986987
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "unavailable",
+        "observations": 0,
+        "sampled_peaks": null,
+        "elapsed_seconds": 1.048299943,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    },
+    "overloaded": {
+      "format": "periodic-report-v1",
+      "metadata": {
+        "format": "periodic-v1",
+        "backend": "linux-monotonic-timerfd-eventfd",
+        "compiler": "FPC 3.2.2",
+        "epoch_us": "9824768",
+        "period_us": "1000",
+        "planned_cycles": "200",
+        "started_cycles": "67",
+        "skipped_cycles": "133",
+        "work_us": "2500"
+      },
+      "planned_cycles": 200,
+      "started_cycles": 67,
+      "skipped_cycles": 133,
+      "start_lateness_us": {
+        "min": 13,
+        "p50": 17,
+        "p95": 30,
+        "p99": 31,
+        "p999": 31,
+        "max": 31,
+        "mean": 19.53731343283582
+      },
+      "callback_duration_us": {
+        "min": 2500,
+        "p50": 2500,
+        "p95": 2500,
+        "p99": 2500,
+        "p999": 2500,
+        "max": 2500,
+        "mean": 2500.0
+      },
+      "inter_start_us": {
+        "min": 2985,
+        "p50": 3000,
+        "p95": 3011,
+        "p99": 3016,
+        "p999": 3016,
+        "max": 3016,
+        "mean": 2999.909090909091
+      },
+      "qualification": "descriptive",
+      "resources": {
+        "observer": "unavailable",
+        "observations": 0,
+        "sampled_peaks": null,
+        "elapsed_seconds": 0.2447069699999993,
+        "limitation": "Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory."
+      }
+    }
+  },
+  "context_build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co",
+    "-Ct",
+    "-O2"
+  ],
+  "binary_sha256": "6795209d46ea393d2a2843c6c5340e25bbee9a8d82f278b3dd81c2f537f36b8e",
+  "context_binary_sha256": "a7182346a596130b014e2b6b8e99ce0ff286260437d43595e9d0c4fd17006762",
+  "context_experiment": {
+    "format": "context-demo-v1",
+    "backend": "boost.context-1.85.0-cabi-v1",
+    "tasks": 16,
+    "completed": 16,
+    "yields": 16000,
+    "resume_calls": 16016,
+    "elapsed_us": 8304,
+    "requested_stack_bytes_per_task": 262144,
+    "carrier_threads": 1,
+    "cancelled": 1,
+    "cancel_cleanup_count": 1,
+    "context_transfers": 32032,
+    "qualification": "descriptive",
+    "mean_us_per_resume_roundtrip": 0.5184815184815185
+  }
+}
