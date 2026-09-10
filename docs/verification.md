@@ -68,6 +68,8 @@ thread must be refused without mutating task state. The identity mutation must
 fail with CONTEXT_TASK_IDENTITY. Unix's SJLJ isolation mutation must fail with
 CONTEXT_RTL_ISOLATION before throwing through a corrupt chain. Windows uses native
 SEH instead, so that particular mutation is explicitly not applicable there.
+Another Unix executable deliberately omits cthreads and must demonstrate an
+explicit constructor rejection, so a constant thread ID cannot bypass ownership.
 
 ContextDemo records 16 completed tasks and 16,000 yields on one carrier, plus a
 separate cancelled task whose finalizer must run once. Cancellation is outside the

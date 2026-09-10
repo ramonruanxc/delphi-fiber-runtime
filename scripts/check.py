@@ -132,6 +132,14 @@ def main():
             raise RuntimeError(f'Unexpected context negative result {define}: {result.returncode}: {output}')
         summary['checks'][define] = dict(exit_code=result.returncode, assertion=output.strip())
         print('PASS negative ' + define)
+    if os.name != 'nt':
+        name = 'CONTEXT_TEST_NO_CTHREADS'
+        binary = build(args.fpc, 'tests/ContextTests.dpr', out / name, [name], context_flags)
+        result = run([binary], timeout=10)
+        (out / name / 'run.log').write_text(result, encoding='utf-8')
+        if result.strip() != 'PASS ContextTests no-cthreads rejection':
+            raise RuntimeError('Missing explicit no-thread-manager rejection evidence')
+        summary['checks'][name] = result.strip()
     spec = importlib.util.spec_from_file_location('report', ROOT / 'scripts/report.py')
     report = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(report)

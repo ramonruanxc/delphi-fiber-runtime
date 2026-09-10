@@ -9,6 +9,8 @@ Initial compiler qualification is explicitly FPC 3.2.2. Other FPC versions and
 Delphi must fail clearly when compiling the experimental context unit, while
 the existing independent periodic units remain available. Compiler-specific RTL
 state handling belongs in one compatibility include, never application code.
+Unix programs must list cthreads first in their uses clause. The runtime rejects
+FPC's stock no-thread manager; custom thread managers are not qualified.
 
 Windows uses native fibers with floating-point state switching. Unix uses a
 small C ABI over pinned Boost.Context assembly and guarded mmap stacks. The C
@@ -40,6 +42,9 @@ Cancel on a suspended task sets a sticky request; a later Resume continues at
 the yield checkpoint, raises `EFiberCancelled` inside that task and runs its
 cleanup. Cancellation is cooperative: user code may catch it, and completion is
 not reported until control actually returns. CheckCancelled tests the same flag.
+If user code catches cancellation and then returns normally, the final state is
+fsCompleted and CancelRequested stays true. fsCancelled means the cancellation
+exception reached the task boundary and its cleanup completed.
 
 Exceptions escaping the callback are caught on that task's own stack. Store
 class/message as copied strings and mark fsFaulted, without transferring the

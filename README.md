@@ -106,6 +106,9 @@ exceção testados. Ampliar versões exige validar o runtime de cada compilador;
 essa limitação não cria uma dependência de fibers nas unidades periódicas.
 No Unix, usa Boost.Context 1.85.0 com fontes mínimas e licença incluídas. No
 Windows, usa fibers nativas com preservação de estado de ponto flutuante.
+Programas Unix devem incluir `cthreads` primeiro no `uses`; o runtime recusa a
+configuração padrão sem gerenciador de threads. Gerenciadores customizados ainda
+não estão qualificados.
 
 A próxima etapa é integrar esperas compatíveis, canais e serviços. Não há
 dependência binária dos dois projetos de referência.
