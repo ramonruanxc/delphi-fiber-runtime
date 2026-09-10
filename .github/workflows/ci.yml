@@ -30,7 +30,7 @@ jobs:
           lazarus-version: stable
       - name: Install FPC on Linux
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-fcl
+        run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-fcl build-essential
       - name: Install FPC on macOS
         if: runner.os == 'macOS'
         run: brew install fpc

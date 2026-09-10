@@ -10,6 +10,12 @@ SPEC.loader.exec_module(package)
 
 
 class PackageTests(unittest.TestCase):
+    def test_context_binary_requires_its_own_verified_hash(self):
+        package.validate_context_provenance(dict(context_binary_sha256='abc'), 'abc')
+        for summary in ({}, dict(context_binary_sha256='other')):
+            with self.subTest(summary=summary), self.assertRaises(ValueError):
+                package.validate_context_provenance(summary, 'abc')
+
     def test_provenance_rejects_stale_dirty_or_changed_binary(self):
         good = dict(commit='abc', dirty=False, binary_sha256='123', target_cpu='x', target_os='y')
         package.validate_provenance(good, 'abc', False, '123', 'x', 'y')
