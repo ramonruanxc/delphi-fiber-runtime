@@ -79,7 +79,7 @@ def main():
             raise RuntimeError('clean consumer produced no benchmark data')
         native = build_native(consumer / 'native-build', root=consumer, run_tests=False)
         context_consumer = consumer / ('context-consumer.exe' if os.name == 'nt' else 'context-consumer')
-        subprocess.run([args.fpc, '-B', '-Mdelphi', '-Fusrc', '-Fl' + str(native),
+        subprocess.run([args.fpc, '-B', '-Mdelphi', '-Ct', '-Fusrc', '-Fl' + str(native),
                         '-FU' + str(consumer), '-o' + str(context_consumer), 'demo/ContextDemo.dpr'],
                        cwd=consumer, check=True, timeout=60, stdout=subprocess.DEVNULL)
         result = subprocess.run([str(context_consumer)], cwd=consumer, check=True,
