@@ -7,18 +7,20 @@ The exact compiler and runner environment are recorded in each CI artifact's
 
 | Combination | Status / evidence |
 |---|---|
-| FPC 3.2.2, Windows x86 | Local validation in progress; see verification evidence |
-| FPC 3.2.2, Linux x64 (WSL2 Ubuntu 24.04) | Local validation in progress; WSL is identified separately from native Linux |
-| FPC, Windows hosted runner | CI target; actual result in Actions |
-| FPC, Linux x64 hosted runner | CI target; actual result in Actions |
-| FPC, macOS hosted runner | CI target; actual CPU/compiler in artifact |
+| FPC 3.2.2, Windows x86 | Functional tests, benchmarks and clean-consumer package passed locally |
+| FPC 3.2.2, Windows x64 | Full local checks and hosted Windows Server 2025 checks passed |
+| FPC 3.2.2, Linux x64 (WSL2 Ubuntu 24.04) | Full local checks passed; WSL is identified separately from native Linux |
+| FPC 3.2.2, Linux x64 hosted runner | Functional tests, benchmarks and clean-consumer package passed |
+| FPC 3.2.2, macOS 26.6.2 ARM64 hosted runner | Functional tests, benchmarks and clean-consumer package passed |
 | Delphi 12, Windows x86/x64 | Unvalidated: installed edition rejects command-line compilation |
 | Older Delphi/FPC versions, other CPU combinations | Planned; not certified by the current builds |
 | Mobile platforms | Outside this milestone |
 
 Windows attempts a high-resolution waitable timer and identifies its standard
 fallback in `BackendName`. Linux uses CLOCK_MONOTONIC; macOS uses matching Mach
-clock/timer units. No native timer can guarantee scheduling latency under all loads.
+clock/timer units and requests reduced coalescing with NOTE_CRITICAL. This can
+increase wakeups and power usage. No native timer can guarantee scheduling latency
+under all loads. See [recorded evidence](evidence/README.md) for the exact revisions.
 
 Suspend/resume detection, rebasing and discontinuity records from the full design
 are not yet implemented. These measurements cover uninterrupted execution only;

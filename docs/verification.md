@@ -40,8 +40,10 @@ extracted into a clean temporary directory with spaces, compiled and executed.
 
 ## Evidence and limits
 
-Local and hosted results are recorded under `docs/evidence/` as they become
-available. GitHub Actions provides the full per-revision build artifacts.
+[Local and hosted results](evidence/README.md) include Windows x86/x64, Linux WSL2,
+native hosted Linux and hosted macOS ARM64. GitHub Actions provides the full
+per-revision build artifacts. The local suite has 55 deterministic schedule
+checks, native timer tests, two negative executables and 15 Python test methods.
 The installed Delphi edition prints `This version of the product does not
 support command line compiling.` while returning exit code 0; that is recorded
 as unavailable, not a successful Delphi build.
