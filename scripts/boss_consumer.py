@@ -1,11 +1,13 @@
 """Install with real Boss in a fresh consumer, then compile and run its sources."""
 import argparse
 import hashlib
+import io
 import json
 import os
 import pathlib
 import subprocess
 import sys
+import tarfile
 import tempfile
 
 from build_example import MARKER
@@ -13,6 +15,37 @@ from install_boss import install, VERSION
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 PACKAGE = 'github.com/ramonruanxc/delphi-fiber-runtime'
+
+
+def verify_installed(library, cache, expected_commit):
+    # Boss exports files without .git. Searching upward from modules would read
+    # the consumer's repository and could falsely certify the wrong dependency.
+    if not (cache / 'HEAD').is_file():
+        raise ValueError('Boss dependency cache is missing')
+    git = ['git', '--git-dir=' + str(cache)]
+    commit = subprocess.check_output([*git, 'rev-parse', 'HEAD'], text=True, timeout=30).strip()
+    if commit != expected_commit:
+        raise ValueError(f'Boss installed {commit}, expected {expected_commit}')
+    exported = subprocess.check_output([*git, 'archive', '--format=tar', 'HEAD'], timeout=60)
+    count = 0
+    with tarfile.open(fileobj=io.BytesIO(exported)) as archive:
+        for entry in archive:
+            if entry.isdir():
+                continue
+            if not entry.isfile():
+                raise ValueError('Unexpected non-file in package source: ' + entry.name)
+            path = (library / entry.name).resolve()
+            if not path.is_relative_to(library.resolve()):
+                raise ValueError('Package archive path escaped library')
+            actual, expected = path.read_bytes(), archive.extractfile(entry).read()
+            if path.suffix.lower() in ('.pas', '.inc', '.dfm', '.dpk', '.dproj'):
+                actual, expected = actual.replace(b'\r\n', b'\n'), expected.replace(b'\r\n', b'\n')
+            if actual != expected:
+                raise ValueError('Installed source differs from expected revision: ' + entry.name)
+            count += 1
+    if count == 0:
+        raise ValueError('Boss dependency source is empty')
+    return count
 
 
 def run(command, cwd, env, log):
@@ -69,9 +102,12 @@ def main():
         metadata = json.loads((library / 'boss.json').read_text(encoding='utf-8'))
         if metadata['name'] != PACKAGE or metadata['mainsrc'] != 'src':
             raise ValueError('Installed package identity or source path differs')
-        commit = run(['git', 'rev-parse', 'HEAD'], library, env, out / 'commit.log').strip()
-        if commit != args.expected_commit:
-            raise ValueError(f'Boss installed {commit}, expected {args.expected_commit}')
+        # MD5 is only Boss's cache directory naming convention, not validation.
+        cache_name = hashlib.md5(repository.lower().encode('utf-8'), usedforsecurity=False).hexdigest()
+        cache = pathlib.Path(env['BOSS_HOME']) / 'cache' / cache_name
+        verified_files = verify_installed(library, cache, args.expected_commit)
+        commit = args.expected_commit
+        (out / 'commit.log').write_text(commit + '\n', encoding='utf-8')
         for path in ('src/FiberRuntime.Scheduler.pas', 'demo/QuickStart.dpr',
                      'native/context/boost/LICENSE_1_0.txt', 'scripts/context_build.py'):
             if not (library / path).is_file():
@@ -86,6 +122,7 @@ def main():
         binary = out / 'quickstart' / ('QuickStart.exe' if os.name == 'nt' else 'QuickStart')
         summary = dict(boss_version=VERSION, repository=repository, requested_ref=args.ref,
                        commit=commit, package_version=metadata['version'],
+                       verified_source_files=verified_files,
                        binary_sha256=hashlib.sha256(binary.read_bytes()).hexdigest(),
                        result=MARKER)
         (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
