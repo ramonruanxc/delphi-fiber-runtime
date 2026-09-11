@@ -53,7 +53,7 @@ Consumes Task2 exact signatures and existing Schedule unit. Produces channel/ser
 
 ## Task 4: Compatibility, demos and comparative automation
 
-Files: `demo/RuntimeDemo.dpr`, `demo/ComparisonDemo.dpr`, `scripts/check.py`, `scripts/package.py`, new reporting/tests as needed, workflows and compatibility docs.
+Files: `demo/RuntimeDemo.dpr`, `demo/ReferenceDemo.dpr`, `scripts/check.py`, `scripts/package.py`, new reporting/tests as needed, workflows and compatibility docs.
 
 - [x] Resolve practical portability tiers and reference-library build availability from actual source/toolchains; implement useful supported fallbacks where needed without pretending fiber scalability.
 - [x] Build mixed periodic/channel demo with 1,000 us services, measured planned/start/finish/counts, cancellation and quiescent shutdown. Preallocate timing buffers.
@@ -61,13 +61,13 @@ Files: `demo/RuntimeDemo.dpr`, `demo/ComparisonDemo.dpr`, `scripts/check.py`, `s
 - [x] Add all positive/named negative checks and semantic report validation; clean consumer builds and executes every packaged demo; hashes bind binaries to exact clean revision.
 - [x] Run 3OS CI, preserve earlier evidence, resolve independent integration review findings.
 
-## Task 5: Full acceptance and publication (after Tasks 6Ã¢â‚¬â€œ8)
+## Task 5: Full acceptance and publication (after Tasks 6-8)
 
 Files: README, contracts, support/verification/evidence, changelog/release notes, final acceptance matrix.
 
-- [ ] Reconcile every approved requirement with delivered functionality, execution evidence or explicit unavailable target; do not call unimplemented core behavior complete.
-- [ ] Publish actual measurements and restrictions, complete full independent review, merge only passing final revision.
-- [ ] Validate main, publish versioned prerelease, verify downloaded assets/checksums/metadata and executable consumers. Record final status and material limitations.
+- [x] Reconcile every approved requirement with delivered functionality, execution evidence or explicit unavailable target; do not call unimplemented core behavior complete.
+- [x] Publish actual measurements and restrictions, complete full independent review, merge only passing final revision.
+- [x] Validate main, publish versioned prerelease, verify downloaded assets/checksums/metadata and executable consumers. Record final status and material limitations.
 
 ## Task 6: Resume segments and dispatch tracing
 
@@ -97,3 +97,5 @@ Files: RuntimeDemo, ReferenceDemo, allocation probe, runtime_report/references a
 - [x] Add equivalent mixed-event workload for actual worker/pool/host APIs and cooperative runtime, declaring payload/capacity/fanout/work/cycle configuration and acceptance/delivery/rejection/discard accounting.
 - [x] Preserve original-host cadence distinction and all strict fault/empty/provenance gates; validate malformed and loss/duplication traces before calculating statistics.
 - [x] Test independently, commit, review and extend main check/package hooks through controller before Task5 publication.
+
+Completed: release v0.3.0-prototype.1, tagged 9417bc9. Published downloads and three Windows consumers verified; see ../../evidence/release-0.3.0.json.

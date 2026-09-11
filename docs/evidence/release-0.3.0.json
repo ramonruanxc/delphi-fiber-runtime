@@ -1,0 +1,69 @@
+{
+  "source_files": 107,
+  "archives": [
+    {
+      "archive": "delphi-fiber-runtime-darwin-aarch64.zip",
+      "target": [
+        "darwin",
+        "aarch64"
+      ],
+      "commit": "9417bc903df7380c012f17d9afe4e71df51531f9",
+      "verified_demos": 3
+    },
+    {
+      "archive": "delphi-fiber-runtime-darwin-x86_64.zip",
+      "target": [
+        "darwin",
+        "x86_64"
+      ],
+      "commit": "9417bc903df7380c012f17d9afe4e71df51531f9",
+      "verified_demos": 3
+    },
+    {
+      "archive": "delphi-fiber-runtime-linux-x86_64.zip",
+      "target": [
+        "linux",
+        "x86_64"
+      ],
+      "commit": "9417bc903df7380c012f17d9afe4e71df51531f9",
+      "verified_demos": 3
+    },
+    {
+      "archive": "delphi-fiber-runtime-win64-x86_64.zip",
+      "target": [
+        "win64",
+        "x86_64"
+      ],
+      "commit": "9417bc903df7380c012f17d9afe4e71df51531f9",
+      "verified_demos": 3
+    }
+  ],
+  "sha256": true,
+  "release": "https://github.com/ramonruanxc/delphi-fiber-runtime/releases/tag/v0.3.0-prototype.1",
+  "workflow": "https://github.com/ramonruanxc/delphi-fiber-runtime/actions/runs/34552915173",
+  "sha256_files": {
+    "delphi-fiber-runtime-darwin-aarch64.zip": "55586cf1fd63dbade635b172de6b3be807222c4909b7dbc8ccc4970df5de6704",
+    "delphi-fiber-runtime-darwin-x86_64.zip": "84ea74ff003f02f16801f5f707551ab944d75797016521298799381e25ae774d",
+    "delphi-fiber-runtime-linux-x86_64.zip": "07a5d5dad36a2cb4771e498b5fdd0ef4aa85c35c7b645de2f399701407b79dc9",
+    "delphi-fiber-runtime-source.zip": "426bc345878787a3bc4175bf77135670c09d661e54009e705fe00b3602338e1f",
+    "delphi-fiber-runtime-win64-x86_64.zip": "458f4c17172631b7e94446ef9272723ea232a651a84cce5a3b6cfed52276dfe4"
+  },
+  "downloaded_windows_execution": {
+    "PeriodicDemo": {
+      "planned": 50,
+      "started": 50
+    },
+    "ContextDemo": {
+      "completed": 16,
+      "yields": 16000
+    },
+    "RuntimeDemo": {
+      "services": 8,
+      "started": 400,
+      "accepted": 400,
+      "delivered": 400,
+      "disposed": 0
+    }
+  },
+  "verification": "Downloaded published assets; all 107 source files equal tagged Git blobs; all 12 binaries match embedded clean-commit evidence; MIT/Boost licenses match; Windows demos executed and reports semantically validated."
+}
