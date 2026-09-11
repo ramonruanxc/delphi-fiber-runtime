@@ -6,11 +6,11 @@ Runtime Pascal em desenvolvimento, inspirado em virtual threads e nos projetos
 [delphi-concurrent-pool](https://github.com/ramonruanxc/delphi-concurrent-pool) e
 [delphi-service-host](https://github.com/ramonruanxc/delphi-service-host).
 
-**O projeto tem dois experimentos independentes: agendamento a 1 kHz e fibers.**
-O primeiro implementa cadência fixa, temporizadores canceláveis e medição. O
-segundo suspende e retoma tarefas com pilhas próprias em uma mesma thread, com
-adaptação explícita do runtime FPC. Canais, esperas integradas e ciclo de vida de
-serviços são etapas posteriores do [projeto aprovado](docs/superpowers/specs/2026-09-10-delphi-fiber-runtime-design.md).
+**Runtime cooperativo com serviços periódicos, esperas e canais limitados.**
+Serviços reutilizam uma tarefa com pilha própria. Ao aguardar um temporizador ou
+canal, liberam o executor para outras tarefas. O agendador periódico também pode
+ser usado de forma independente. Implementação e limites seguem o
+[projeto aprovado](docs/superpowers/specs/2026-09-10-delphi-fiber-runtime-design.md).
 
 ## O que já pode ser exercitado
 
@@ -22,10 +22,17 @@ serviços são etapas posteriores do [projeto aprovado](docs/superpowers/specs/2
 - CI multiplataforma, testes negativos com falha exata e releases por tag.
 - Fibers experimentais: chamadas aninhadas, cancelamento cooperativo, contenção
   de exceções e um campo explícito para dados locais de cada tarefa.
+- Agendador FIFO limitado, mailbox entre threads e notificações sem perder sinais.
+- `Delay`, `AwaitUntil` e canais com contrapressão, fechamento e limpeza.
+- Serviços com uma invocação ativa, parada individual e timeout sem destruir pilhas.
+- Eventos com payload gerenciado, capacidade limitada e descarte na parada.
+- Retomada detectada inicia outro segmento periódico sem reproduzir ciclos antigos.
+- Relógios inválidos interrompem o despacho e permitem limpeza cooperativa.
 
 `Yield` devolve explicitamente o controle ao executor. Ele pode então retomar
-outra tarefa. Código bloqueante arbitrário ainda bloqueia a thread; a integração
-entre fibers, temporizadores e canais pertence à etapa seguinte.
+outra tarefa. Código bloqueante arbitrário ainda bloqueia a thread. Use operações
+compatíveis ou execute o trabalho legado fora do carrier e envie o resultado por
+`Post`, respeitando o contrato de capacidade e duração dos dados.
 
 ## Executar
 
@@ -35,12 +42,14 @@ da Apple. O experimento Unix compila um helper C/assembly estático. Os comandos
 PowerShell e em shells Unix:
 
 ```text
-python scripts/check.py
+python scripts/check.py --references
 python scripts/package.py
 ```
 
 Execute esses scripts a partir de um clone Git. O primeiro comando compila,
-executa os testes e mede três cenários periódicos e um de alternância de fibers. Os dados
+executa os testes, demos integrados e comparações com as revisões fixadas dos
+projetos de referência. `--references` requer acesso ao GitHub; sem essa opção,
+os testes e demos próprios continuam disponíveis. Os dados
 ficam em `build/check/`; o segundo cria os pacotes em `dist/` e compila um
 consumidor extraído em um caminho com espaços. O empacotamento usa arquivos
 rastreados pelo Git; execute a partir de um clone do repositório.
@@ -57,6 +66,20 @@ PeriodicDemo --cycles 10000 --period-us 1000 --work-us 100
 
 `--work-us` simula trabalho de CPU. Os registros são pré-alocados e impressos
 somente após a medição. Por padrão, `--work-us` é zero.
+
+O demo integrado usa vários serviços e um receptor de eventos:
+
+```text
+RuntimeDemo --services 8 --cycles 200 --work-us 100
+RuntimeDemo --services 8 --cycles 200 --await-us 2500
+```
+
+O segundo cenário suspende cada callback por 2,5 ms para verificar convivência
+entre serviços e descarte dos ciclos que passaram durante a invocação. O JSON
+registra eventos aceitos, recebidos e descartados, etapas de despacho por serviço
+e observações do heap. Invocações que atravessam uma retomada são separadas das
+distribuições de execução contínua.
+Consulte a [API e regras de uso](docs/runtime-contract.md).
 
 ## Como interpretar 1 ms
 
@@ -94,7 +117,7 @@ segurando locks nativos. O detector de exceção ativa não identifica todos os
 casos de desenrolamento. As restrições e a API completa estão no
 [contrato de contextos](docs/context-contract.md).
 
-## Portabilidade e próximos passos
+## Portabilidade
 
 A API separa política de agendamento e implementação do sistema operacional.
 Compatibilidade universal não é presumida: cada combinação de compilador,
@@ -110,8 +133,22 @@ Programas Unix devem incluir `cthreads` primeiro no `uses`; o runtime recusa a
 configuração padrão sem gerenciador de threads. Gerenciadores customizados ainda
 não estão qualificados.
 
-A próxima etapa é integrar esperas compatíveis, canais e serviços. Não há
-dependência binária dos dois projetos de referência.
+Não há dependência binária dos projetos de referência no runtime. Eles são
+obtidos em revisões fixas somente para o benchmark opcional. `ReferenceDemo`
+é um consumidor de comparação e exige essas fontes; os pacotes executáveis
+distribuem PeriodicDemo, ContextDemo e RuntimeDemo.
+
+Para verificar o núcleo sem exigir o adaptador de contextos, use
+`python scripts/check.py --core-only`. Para testar um compilador Delphi licenciado:
+
+```text
+python scripts/compatibility.py --compiler dcc32 --kind delphi
+```
+
+Esse probe verifica o núcleo periódico; ele não certifica fibers. Compilador
+ausente, licença sem CLI e ausência de executável produzido resultam em falha
+explícita. A edição Delphi instalada neste ambiente recusou a compilação por CLI.
+O suporte a fibers em outras versões depende de adaptadores RTL e execução real.
 
 Consulte o [contrato](docs/periodic-contract.md), a [verificação](docs/verification.md)
 e as [notas da versão](docs/release-notes.md).

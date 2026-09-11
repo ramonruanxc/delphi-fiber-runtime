@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0-prototype.1
+
+- Bounded cooperative scheduler, compatible waits, channels and persistent services.
+- Reusable notifications, transactional mailbox and clock-fault cleanup.
+- Resume rebasing with segment accounting, preserving active workflows.
+- Owned event endpoints, managed payloads and service-stop quiescence.
+- Dispatch stage traces and equivalent minimal, CPU and mixed comparisons.
+- Mixed demo, pinned reference comparisons, allocation/heap observations.
+- Independent compiler probe, macOS Intel CI and three-demo packages.
+- Explicit delivery acceptance and qualification boundaries.
+
 ## 0.2.0-prototype.1
 
 - Experimental stackful tasks bound to one native carrier, with explicit yields,

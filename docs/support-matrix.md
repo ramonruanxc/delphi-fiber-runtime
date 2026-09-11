@@ -12,6 +12,7 @@ The exact compiler and runner environment are recorded in each CI artifact's
 | FPC 3.2.2, Linux x64 (WSL2 Ubuntu 24.04) | Full local checks passed; WSL is identified separately from native Linux |
 | FPC 3.2.2, Linux x64 hosted runner | Functional tests, benchmarks and clean-consumer package passed |
 | FPC 3.2.2, macOS 26.6.2 ARM64 hosted runner | Functional tests, benchmarks and clean-consumer package passed |
+| FPC 3.2.2, macOS 15.7.9 Intel x64 hosted runner | Functional tests, benchmarks and clean-consumer package passed |
 | Delphi 12, Windows x86/x64 | Unvalidated: installed edition rejects command-line compilation |
 | Older Delphi/FPC versions, other CPU combinations | Planned; not certified by the current builds |
 | Mobile platforms | Outside this milestone |
@@ -22,10 +23,14 @@ clock/timer units and requests reduced coalescing with NOTE_CRITICAL. This can
 increase wakeups and power usage. No native timer can guarantee scheduling latency
 under all loads. See [recorded evidence](evidence/README.md) for the exact revisions.
 
-Suspend/resume detection, rebasing and discontinuity records from the full design
-are not yet implemented. These measurements cover uninterrupted execution only;
-do not qualify a run spanning system sleep. The OS clock/timer suspend semantics
-differ. This limitation must be resolved before support includes resume behavior.
+The integrated runtime detects clock discontinuities using paired inclusive and
+active clocks. A valid resume starts a new periodic segment after any active
+invocation finishes. Invalid clocks cancel dispatch; an optional rpStop policy
+also stops on resume.
+Its 1,000 us sampling tolerance and availability are described in the
+[runtime contract](runtime-contract.md). Native reads and injected discontinuities
+are tested; physical suspend/resume cycles are not yet qualified. Older Windows
+without precise interrupt-time APIs reports detection unavailable explicitly.
 
 The portable schedule uses a conservative Pascal API, but historical compilers
 and backend ABI combinations still require builds.
@@ -38,7 +43,7 @@ and backend ABI combinations still require builds.
 | FPC 3.2.2 Windows x64, default SEH | Windows fibers with floating-point switching | Local tests and hosted full checks / clean package passed |
 | FPC 3.2.2 Linux x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Local WSL and hosted full checks / clean packages passed |
 | FPC 3.2.2 macOS ARM64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full checks and clean package passed |
-| macOS x64 | Matching upstream assembly included | Execution not yet qualified |
+| FPC 3.2.2 macOS x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full integrated checks and clean package passed |
 | Other FPC versions; Delphi | Additional RTL adapter required | Experimental context unit refuses compilation |
 
 See the [context evidence](evidence/context-2026-09-10.md) for the exact revision,
@@ -54,5 +59,15 @@ Neither is a measurement of committed memory or a claim of stack-overflow recove
 
 Managed locals and explicit LocalValue are exercised by context tests; ordinary
 threadvars remain shared. Exception-handler/unwind suspension, task migration,
-transparent blocking calls and full timer/channel/service integration remain
-outside this milestone. See [context contract](context-contract.md).
+transparent blocking calls remain outside context qualification. Integrated
+timer/channel/service support has its own [runtime contract](runtime-contract.md).
+
+## Integrated runtime validation
+
+Local scheduler/channel/service tests passed on Windows x86/x64 and WSL Linux x64.
+Full Windows x86 and WSL Linux checks include the mixed demo and pinned reference
+comparisons. Hosted validation covers Windows x64, Linux x64, macOS ARM64 and now
+also macOS x64 (`macos-15-intel`); publication requires all four jobs.
+All four passed at the [integrated revision](evidence/runtime-2026-09-11.md).
+The standalone schedule core can be probed without importing Context; broader
+Delphi support is unvalidated, not implied by conservative Pascal syntax.

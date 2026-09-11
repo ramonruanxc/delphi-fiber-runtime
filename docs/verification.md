@@ -31,8 +31,12 @@ scenarios in shared CI are descriptive, without an agreed jitter threshold.
 Artifacts contain raw CSV, report JSON, compilation logs and environment/commit
 metadata. Optional psutil sampling reports observed RSS/VMS, thread count and CPU
 time; it can miss peaks, undercount final CPU and influence execution. VMS is not
-portable committed-memory accounting. Allocation counts and separate committed /
-reserved memory accounting remain future instrumentation.
+portable committed-memory accounting. Windows reports an additional sampled
+private committed-byte peak from psutil's `private` field (Windows PrivateUsage),
+excluding shared mappings. Other targets explicitly report that field unavailable;
+reserved bytes remain unavailable on all targets, never substituted with RSS/VMS
+or requested stack size. See [Windows counter semantics](https://learn.microsoft.com/en-us/windows/win32/api/psapi/ns-psapi-process_memory_counters_ex).
+The integrated demos also report FPC allocation entry calls as described below.
 
 The release workflow runs the same matrix on the tag revision before publishing
 source and native demo archives with SHA-256 checksums. A source archive is also
@@ -41,20 +45,20 @@ extracted into a clean temporary directory with spaces, compiled and executed.
 ## Evidence and limits
 
 [Local and hosted results](evidence/README.md) include Windows x86/x64, Linux WSL2,
-native hosted Linux and hosted macOS ARM64. GitHub Actions provides the full
-per-revision build artifacts. The suite has 55 deterministic schedule checks,
-native timer tests, context tests, 21 Python test methods and three negative
-executables on Windows (four on Unix). Unix also runs the native context suite
+native hosted Linux and hosted macOS ARM64/Intel. GitHub Actions provides the full
+per-revision build artifacts. The suite has 70 deterministic schedule checks,
+nine Pascal suites, 44 Python test methods and five negative
+executables on Windows (six on Unix). The optional reference comparison adds a
+named host-fault negative. Unix also runs the native context suite
 and a positive test of explicit missing-thread-manager rejection.
 The installed Delphi edition prints `This version of the product does not
 support command line compiling.` while returning exit code 0; that is recorded
 as unavailable, not a successful Delphi build.
 
-This milestone measures one persistent executor. Comparison with the existing
-pool/service-host implementations, mixed service/event loads, many-service scaling,
-lost-wakeup stress under full runtime traffic belong to subsequent milestones.
-Context/RTL tests are added separately below. No leak-freedom claim is inferred
-from resource churn.
+The integrated milestone measures one persistent carrier, 1/8/32 periodic services,
+short CPU work and suspended work with channel delivery. It compares actual pinned
+worker/pool/service-host APIs in separate processes. No leak-freedom claim is
+inferred from resource churn.
 
 ## Context experiment additions
 
@@ -82,12 +86,72 @@ The requested 256 KiB per task is a stack reservation parameter, not a measureme
 of committed memory. Guard pages add overhead; no overflow-recovery or leak-freedom
 claim follows from these functional tests.
 
-The source package builds both demos in a clean consumer. Each native archive
-contains both demos, their evidence, the MIT notice and the Boost Software License.
-Both executable hashes must match the same clean revision's check summary.
+The source package builds PeriodicDemo, ContextDemo and RuntimeDemo in a clean
+consumer. Each native archive contains these three demos, their evidence and
+MIT/Boost notices. All three hashes must match the same clean revision's summary.
+Nonignored untracked inputs also make the repository dirty. ReferenceDemo requires
+optional pinned benchmark inputs and is not in the native runtime distribution.
 
 FPC 3.2.2 context support is an experiment with a narrow RTL adapter. Active
 exception-handler/unwind suspension, allocator/error-hook suspension, asynchronous
 exceptions/signals during handoff, nondefault shadow-stack configurations and
 unvalidated compiler versions remain outside its qualification. See the
 [context contract](context-contract.md) for the ownership and cancellation rules.
+
+## Integrated runtime and comparisons
+
+Windows CI installs the official Lazarus 4.4/FPC 3.2.2 x64 distribution through
+`scripts/install-fpc-windows.ps1`, with bounded mirror downloads and a pinned
+SHA-256. The retrieved installer had a valid Authenticode signature from Stichting
+Programming Free Pascal & Lazarus Foundation. CI requires the same hash and
+verifies compiler version/CPU after installation. This replaces an automatic
+SourceForge download that stalled until the hosted job timed out.
+
+NotificationTests covers preposted signals, coalescing, parking races, cancellation
+and resource churn. Paired-clock tests exercise uncertainty, offset changes and
+native availability. SchedulerTests uses virtual time and producer handshakes for
+bounded admission, FIFO turns, delayed tasks, duplicate wakes, Post rollback,
+cooperative timeout, ownership and clock-fault cleanup. ChannelTests covers
+full/empty predicates, close/drain and cancellation. ServiceTests covers fixed
+epoch across suspension, skips, independent stop and retained live resources.
+ServiceResumeTests verifies idle and active resume, segment accounting and
+cancelled cleanup. EventHubTests verifies bounded atomic fanout, managed payload
+release, pending source disposal, recipient cancellation, active-handler timeout
+and safe suppression of posted deliveries after their service has been freed.
+
+Additional mutations require SCHEDULER_READY_ONCE and SERVICE_STOP_NO_CALLBACK,
+exit 1. A deliberately failing reference callback must produce REFERENCE_HOST_FAULT,
+exit 1: successful reference-host shutdown alone does not establish successful work.
+
+RuntimeDemo records every started activation, including one cancelled during a
+compatible wait, and its final cleanup timestamp. Each activation accounts for
+one accepted or rejected event; accepted deliveries complete or are explicitly
+disposed during stop. Validation checks phase, latest-due index, non-overlap,
+timestamps, event counts and shutdown.
+Empty traces remain descriptive data but cannot certify demo/consumer execution.
+Samples are preallocated and printed after stop.
+
+The FPC allocation observer replaces three entry points during RunUntil and
+restores the original memory manager in finally. It first self-tests an explicit
+allocation/reallocation. Hooks never suspend or allocate. Counts are entry calls,
+not physical allocations; heap before/after and process-lifetime peak are not OS
+committed memory. Native stacks request 256 KiB each plus overhead. RSS/VMS remain
+external sampled observations. See the [FPC interface](https://github.com/fpc/FPCSource/blob/release_3_2_2/rtl/inc/heaph.inc).
+
+`--references` fetches exact SHAs without modifying sibling repositories.
+Workers/pool/fibers use the same fixed-epoch native-timer callback adapter. Pool
+jobs retain their worker while waiting; fewer workers than services cause reported
+starvation. The unmodified host has its own interval policy: only actual intervals,
+counts and callback durations are compared, never invented fixed-epoch deadlines.
+All modes use a declared 50 ms startup window, 200 nominal cycles, 100 us CPU work,
+1 or 8 services and a four-worker pool. Mixed events declare the same immutable
+payload size, queue capacity, fanout and handler CPU work. Admission, completion,
+disposal and rejection counts are checked. Results are not a controlled ranking.
+
+Runtime traces record the requested wait deadline, scheduler observation of timer
+eligibility, first enqueue, resume, callback start and completion. Missing stages
+remain null for inline or non-timer dispatch. The latest-due activation deadline
+can follow the original enqueue, so it is validated separately. Observation is
+not a kernel interrupt timestamp. Crossing-resume invocations and segments are
+separated from uninterrupted distributions. Physical power cycling is not inferred
+from simulated clock generations or successful native clock reads.

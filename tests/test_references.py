@@ -1,0 +1,67 @@
+import pathlib
+import sys
+import unittest
+sys.path.insert(0, str(pathlib.Path(__file__).parents[1] / 'scripts'))
+from references import report
+
+
+class ReferenceTests(unittest.TestCase):
+    def data(self):
+        return dict(format='reference-bench-v1', mode='host', services=1, workers=4,
+                    planned_cycles=3, period_us=1000, warmup_us=50000,
+                    runs=[dict(epoch_us=100, samples=[dict(index=1, deadline_us=0,
+                                                          start_us=1105, finish_us=1150)])])
+
+    def test_host_has_no_invented_skipped_deadlines(self):
+        result = report(self.data())
+        self.assertEqual(result['started_activations'], 1)
+        self.assertNotIn('skipped_activations', result)
+        self.assertIn('Interval=1ms', result['contract'])
+
+    def test_mixed_events_account_for_stop_disposal(self):
+        data = self.data()
+        data['events'] = dict(enabled=True, payload_bytes=64, fanout=1, capacity=256,
+                              callback_us=25, attempted=1, accepted=1, delivered=0,
+                              disposed=1, rejected=0, handler_faults=0)
+        result = report(data)
+        self.assertEqual(result['events']['disposed'], 1)
+        self.assertIn('mixed', result['workload'])
+
+    def test_rejects_event_loss_and_missing_workload(self):
+        for change in ({'disposed': 0}, {'attempted': 2}, {'handler_faults': 1}, {'capacity': None}):
+            data = self.data()
+            data['events'] = dict(enabled=True, payload_bytes=64, fanout=1, capacity=256,
+                                  callback_us=25, attempted=1, accepted=1, delivered=0,
+                                  disposed=1, rejected=0, handler_faults=0)
+            data['events'].update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                report(data)
+
+    def test_cpu_budget_starts_after_publication(self):
+        data = self.data()
+        data['work_us'] = 100
+        row = data['runs'][0]['samples'][0]
+        row.update(work_start_us=1200, finish_us=1250)
+        with self.assertRaises(ValueError): report(data)
+        row['finish_us'] = 1300
+        self.assertEqual(report(data)['started_activations'], 1)
+
+    def test_rejects_bool_index_as_numeric_identity(self):
+        data = self.data()
+        data['runs'][0]['samples'][0]['index'] = True
+        with self.assertRaises(ValueError):
+            report(data)
+
+    def test_rejects_outside_horizon_and_mismatched_count(self):
+        data = self.data()
+        data['runs'][0]['samples'][0]['start_us'] = 99
+        with self.assertRaises(ValueError):
+            report(data)
+        data = self.data()
+        data['services'] = 2
+        with self.assertRaises(ValueError):
+            report(data)
+
+
+if __name__ == '__main__':
+    unittest.main()

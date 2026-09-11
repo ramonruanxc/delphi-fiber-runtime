@@ -3,26 +3,46 @@ unit FiberRuntime.Platform;
 {$IFDEF MSWINDOWS}{$DEFINE WINDOWS}{$ENDIF}
 interface
 uses SysUtils;
+const
+  ClockSuspendToleranceUs = 1000;
+  ClockSampleMaxWidthUs = 1000;
 type
-  { One wait owner; Cancel is cross-thread and sticky. Join before destruction. }
+  EClockDiscontinuity = class(Exception);
+  { Owner-only interval guard, also reusable by injected clock backends. }
+  TClockContinuityGuard = class
+  private
+    FInitialized: Boolean;
+    FLower, FUpper, FLastActive, FLastInclusive, FGeneration: Int64;
+  public
+    function Observe(ABeforeActive, AInclusive, AAfterActive: Int64): Int64;
+  end;
+  TTimerWaitResult = (twDeadline, twNotified, twCancelled);
+  { One wait owner; Notify/Cancel are cross-thread. Join before destruction. }
   TPlatformTimer = class
   private
+    FClockGuard: TClockContinuityGuard;
     {$IFDEF WINDOWS}
-    FTimer, FCancel: THandle;
+    FInterruptTime, FUnbiasedTime: Pointer;
+    FTimer, FCancel, FNotify, FClockLibrary: THandle;
     FFrequency: Int64;
     FHighResolution: Boolean;
     {$ELSE}
-    FTimer, FCancel: Integer;
+    FTimer, FCancel, FNotify: Integer;
     {$IFDEF DARWIN}
-    FCancelled: LongInt;
+    FCancelled, FNotified: LongInt;
     FNumer, FDenom: Cardinal;
     {$ENDIF}
     {$ENDIF}
+    procedure ReadSuspendSample(out ABeforeActive, AInclusive, AAfterActive: Int64);
   public
     constructor Create;
     destructor Destroy; override;
     function NowUs: Int64;
+    function SuspendDetectionAvailable: Boolean;
+    function SuspendGeneration: Int64;
     function WaitUntil(ADeadlineUs: Int64): Boolean;
+    function WaitUntilOrWake(ADeadlineUs: Int64): TTimerWaitResult;
+    procedure Notify;
     procedure Cancel;
     function BackendName: string;
   end;
@@ -67,6 +87,32 @@ begin
       raise ERangeError.Create('Native deadline conversion overflow');
     Inc(Result);
   end;
+end;
+
+{$I platform/clock_guard.inc}
+
+function TPlatformTimer.SuspendGeneration: Int64;
+var BeforeActive, Inclusive, AfterActive: Int64; Attempt: Integer;
+begin
+  if not SuspendDetectionAvailable then Exit(0);
+  if FClockGuard = nil then FClockGuard := TClockContinuityGuard.Create;
+  { Bounded retries only for a preempted read, never polling for a deadline. }
+  for Attempt := 1 to 3 do
+  begin
+    ReadSuspendSample(BeforeActive, Inclusive, AfterActive);
+    if (AfterActive < BeforeActive) or
+       (AfterActive - BeforeActive <= ClockSampleMaxWidthUs) then Break;
+  end;
+  Result := FClockGuard.Observe(BeforeActive, Inclusive, AfterActive);
+end;
+
+function TPlatformTimer.WaitUntil(ADeadlineUs: Int64): Boolean;
+var Wake: TTimerWaitResult;
+begin
+  repeat
+    Wake := WaitUntilOrWake(ADeadlineUs);
+  until Wake <> twNotified;
+  Result := Wake = twDeadline;
 end;
 
 {$IFDEF WINDOWS}

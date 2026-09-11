@@ -10,6 +10,12 @@ SPEC.loader.exec_module(package)
 
 
 class PackageTests(unittest.TestCase):
+    def test_runtime_binary_requires_its_own_verified_hash(self):
+        package.validate_runtime_provenance(dict(runtime_binary_sha256='abc'), 'abc')
+        for summary in ({}, dict(runtime_binary_sha256='other')):
+            with self.subTest(summary=summary), self.assertRaises(ValueError):
+                package.validate_runtime_provenance(summary, 'abc')
+
     def test_context_binary_requires_its_own_verified_hash(self):
         package.validate_context_provenance(dict(context_binary_sha256='abc'), 'abc')
         for summary in ({}, dict(context_binary_sha256='other')):

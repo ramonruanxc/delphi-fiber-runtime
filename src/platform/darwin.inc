@@ -25,6 +25,8 @@ type
   end;
 function NativeAbsoluteTime: UInt64;
   cdecl; external 'c' name 'mach_absolute_time';
+function NativeContinuousTime: UInt64;
+  cdecl; external 'c' name 'mach_continuous_time';
 function NativeTimebase(var Info: TTimebase): Integer;
   cdecl; external 'c' name 'mach_timebase_info';
 function NativeKQueue: Integer; cdecl; external 'c' name 'kqueue';
@@ -69,11 +71,14 @@ begin
   Event.Filter := EVFILT_USER;
   Event.Flags := EV_ADD or EV_ENABLE or EV_CLEAR;
   SubmitEvent(FTimer, Event);
+  Event.Ident := 3;
+  SubmitEvent(FTimer, Event);
 end;
 
 destructor TPlatformTimer.Destroy;
 begin
   if FTimer >= 0 then NativeClose(FTimer);
+  FClockGuard.Free;
   inherited Destroy;
 end;
 
@@ -86,13 +91,18 @@ begin
   Result := Scale(Int64(Ticks), FNumer, Int64(FDenom) * 1000, False);
 end;
 
-function TPlatformTimer.WaitUntil(ADeadlineUs: Int64): Boolean;
+function TPlatformTimer.WaitUntilOrWake(ADeadlineUs: Int64): TTimerWaitResult;
 var Change, Event: TKEvent64; Status: Integer;
 begin
   while True do
   begin
-    if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(False);
-    if NowUs >= ADeadlineUs then Exit(True);
+    if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(twCancelled);
+    if NowUs >= ADeadlineUs then Exit(twDeadline);
+    if InterlockedExchange(FNotified, 0) <> 0 then
+    begin
+      if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(twCancelled);
+      Exit(twNotified);
+    end;
     FillChar(Change, SizeOf(Change), 0);
     Change.Ident := 2;
     Change.Filter := EVFILT_TIMER;
@@ -111,6 +121,19 @@ begin
   end;
 end;
 
+procedure TPlatformTimer.Notify;
+var Event: TKEvent64;
+begin
+  { Publish a persistent predicate before triggering. Do not clear the kernel
+    event here: a concurrent trigger between predicate drain and park must stay. }
+  InterlockedExchange(FNotified, 1);
+  FillChar(Event, SizeOf(Event), 0);
+  Event.Ident := 3;
+  Event.Filter := EVFILT_USER;
+  Event.FFlags := NOTE_TRIGGER;
+  SubmitEvent(FTimer, Event);
+end;
+
 procedure TPlatformTimer.Cancel;
 var Event: TKEvent64;
 begin
@@ -125,4 +148,21 @@ end;
 function TPlatformTimer.BackendName: string;
 begin
   Result := 'darwin-mach-kevent64-absolute-critical';
+end;
+
+function TPlatformTimer.SuspendDetectionAvailable: Boolean;
+begin
+  Result := True; { mach_continuous_time requires macOS 10.12 or newer. }
+end;
+
+procedure TPlatformTimer.ReadSuspendSample(out ABeforeActive, AInclusive,
+  AAfterActive: Int64);
+var Ticks: UInt64;
+begin
+  ABeforeActive := NowUs;
+  Ticks := NativeContinuousTime;
+  AAfterActive := NowUs;
+  if Ticks > UInt64(High(Int64)) then
+    raise ERangeError.Create('Mach continuous timestamp overflow');
+  AInclusive := Scale(Int64(Ticks), FNumer, Int64(FDenom) * 1000, False);
 end;
