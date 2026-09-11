@@ -2,7 +2,7 @@
 import json
 import pathlib
 import subprocess
-from runtime_report import analyze, distribution, integer
+from runtime_report import analyze, distribution, integer, validate_events
 
 REFERENCES = {
     'pool': ('https://github.com/ramonruanxc/delphi-concurrent-pool.git', 'efef9d6ac9337d9e597feaf454e28474c99658d3'),
@@ -38,9 +38,9 @@ def report(data):
         raise ValueError('service count mismatch')
     started = sum(len(r['samples']) for r in data['runs'])
     if data['mode'] != 'host':
-        result = analyze(dict(data, format='runtime-demo-v1', carrier_threads=1, stopped=True,
+        result = analyze(dict({k: v for k, v in data.items() if k != 'allocation_api_calls'}, format='runtime-demo-v1', carrier_threads=1, stopped=True,
                               sent=started, received=started, rejected=0))
-        for key in ('accepted_events', 'received_events', 'rejected_events'):
+        for key in ('accepted_events', 'received_events', 'rejected_events', 'disposed_events'):
             del result[key]
         result['contract'] = 'fixed-epoch native-timer adapter; pool jobs retain a worker while awaiting timers'
     else:
@@ -65,9 +65,21 @@ def report(data):
         result = dict(qualification='descriptive', services=count, started_activations=started,
                       inter_start_us=distribution(intervals), callback_duration_us=distribution(durations),
                       contract='unmodified service host, Interval=1ms; no fixed-epoch deadline or skipped-count claim')
+    if 'events' in data:
+        result['events'] = validate_events(data['events'], started)
+    result['workload'] = 'mixed periodic/events' if 'events' in data else ('periodic CPU' if data.get('work_us', 0) else 'minimal periodic')
+    result['work_us'] = integer(data.get('work_us', 0))
+    result['event_capacity_semantics'] = 'pending deliveries only, excluding at most one active handler; fanout one and one consumer' if 'events' in data else None
+    result['delivery_executor'] = {'fibers': 'one cooperative hub subscriber task on shared carrier',
+        'workers': 'one pinned reference bus background dispatcher',
+        'pool': 'separate pinned reference pool with one delivery worker',
+        'host': 'unmodified host bus background dispatcher'}[data['mode']] if 'events' in data else None
+    if 'allocation_api_calls' in data:
+        result['allocation_api_calls'] = integer(data['allocation_api_calls'])
+        result['allocation_window'] = data['allocation_window']
     result.update(format='reference-report-v1', mode=data['mode'], workers=data['workers'],
                   references={key: {'url': url, 'commit': commit} for key, (url, commit) in REFERENCES.items()},
-                  limitation='Short independent process observations, not a controlled performance ranking. Minimal CPU callbacks; mixed events measured separately.')
+                  limitation='Short independent process observations, not a controlled performance ranking. Workload parameters match; host cadence and delivery execution resources differ. Preallocated immutable payloads; reference bus allocates delivery copies, pool uses preallocated jobs, fibers use bounded hub envelopes.')
     return result
 
 
@@ -76,17 +88,23 @@ def collect(build, benchmark, compiler, root, out, flags):
     binary = build(compiler, 'demo/ReferenceDemo.dpr', out / 'reference-demo',
                    extra_flags=[*flags, *['-Fu' + str(path) for path in sources]])
     results = {}
-    for mode in ('fibers', 'workers', 'pool', 'host'):
-        for services in (1, 8):
-            name = f'reference-{mode}-{services}'
-            path = out / (name + '.raw.json')
-            resources = benchmark(binary, [mode, '--services', str(services), '--cycles', '200', '--workers', '4', '--work-us', '100'], path)
-            result = report(json.loads(path.read_text(encoding='utf-8')))
-            if result['started_activations'] == 0:
-                raise ValueError('Reference benchmark exercised no activation: ' + name)
-            result['resources'] = resources
-            (out / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
-            results[name] = result
+    for workload, work_us, event_args in (
+            ('minimal', 0, []), ('cpu', 100, []),
+            ('mixed', 100, ['--events', '1', '--event-capacity', '256', '--payload-bytes', '64', '--callback-us', '25'])):
+        for mode in ('fibers', 'workers', 'pool', 'host'):
+            for services in (1, 8):
+                name = f'reference-{mode}-{services}-{workload}'
+                path = out / (name + '.raw.json')
+                resources = benchmark(binary, [mode, '--services', str(services), '--cycles', '200',
+                                      '--workers', '4', '--work-us', str(work_us), *event_args], path)
+                result = report(json.loads(path.read_text(encoding='utf-8')))
+                if result['started_activations'] == 0:
+                    raise ValueError('Reference benchmark exercised no activation: ' + name)
+                if workload == 'mixed' and result['events']['accepted'] == 0:
+                    raise ValueError('Reference mixed benchmark accepted no event: ' + name)
+                result['resources'] = resources
+                (out / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+                results[name] = result
     negative = build(compiler, 'demo/ReferenceDemo.dpr', out / 'REFERENCE_PROVE_HOST_FAULT',
                      ['REFERENCE_PROVE_HOST_FAULT'], [*flags, *['-Fu' + str(path) for path in sources]])
     result = subprocess.run([str(negative), 'host', '--services', '1', '--cycles', '20'],

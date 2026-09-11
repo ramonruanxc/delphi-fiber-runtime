@@ -18,6 +18,25 @@ class ReferenceTests(unittest.TestCase):
         self.assertNotIn('skipped_activations', result)
         self.assertIn('Interval=1ms', result['contract'])
 
+    def test_mixed_events_account_for_stop_disposal(self):
+        data = self.data()
+        data['events'] = dict(enabled=True, payload_bytes=64, fanout=1, capacity=256,
+                              callback_us=25, attempted=1, accepted=1, delivered=0,
+                              disposed=1, rejected=0, handler_faults=0)
+        result = report(data)
+        self.assertEqual(result['events']['disposed'], 1)
+        self.assertIn('mixed', result['workload'])
+
+    def test_rejects_event_loss_and_missing_workload(self):
+        for change in ({'disposed': 0}, {'attempted': 2}, {'handler_faults': 1}, {'capacity': None}):
+            data = self.data()
+            data['events'] = dict(enabled=True, payload_bytes=64, fanout=1, capacity=256,
+                                  callback_us=25, attempted=1, accepted=1, delivered=0,
+                                  disposed=1, rejected=0, handler_faults=0)
+            data['events'].update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                report(data)
+
     def test_rejects_bool_index_as_numeric_identity(self):
         data = self.data()
         data['runs'][0]['samples'][0]['index'] = True

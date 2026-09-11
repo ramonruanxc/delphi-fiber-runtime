@@ -1,5 +1,6 @@
-{ FPC 3.2.2 benchmark-only entry-point observer. One carrier, no helper threads.
+{ FPC 3.2.2 benchmark-only entry-point observer. Counter increments are atomic across benchmark threads.
   Counts calls through GetMem/AllocMem/ReAllocMem, not OS allocations or bytes.
+  Install before creating helper threads and restore after joins.
   ABI source: FPCSource/release_3_2_2/rtl/inc/heaph.inc. No hook may suspend. }
 var
   ProbeOriginal: TMemoryManager;
