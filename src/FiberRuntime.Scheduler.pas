@@ -1,7 +1,16 @@
 unit FiberRuntime.Scheduler;
-{$IFDEF FPC}{$MODE DELPHI}{$H+}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$H+}
+{$ENDIF}
+
 interface
-uses SysUtils, FiberRuntime.Context;
+
+uses
+  SysUtils,
+  FiberRuntime.Context;
+
 type
   TSchedulerDriver = class
   public
@@ -12,6 +21,7 @@ type
       thread. Must not suspend or call back into this scheduler. }
     procedure Wake; virtual; abstract;
   end;
+
   TFiberScheduler = class;
   TScheduledTask = class;
   TScheduledProc = procedure(ATask: TScheduledTask; AData: Pointer);
@@ -19,6 +29,7 @@ type
   TCarrierCondition = function(AData: Pointer): Boolean;
   TResumePolicy = (rpRebasePeriodic, rpStop);
   TReadyReason = (rrSpawn, rrYield, rrWake, rrTimer, rrCancel, rrResume);
+
   TSchedulerTaskTrace = record
     HasWaitDeadline, HasTimerObservation, HasReadyEnqueue, HasResume: Boolean;
     WaitDeadlineUs, TimerObservedUs, ReadyEnqueuedUs, ResumedUs: Int64;
@@ -26,7 +37,12 @@ type
     ReadyGeneration, ResumeGeneration: Int64;
   end;
   TTaskWait = (swReady, swParked, swTimer);
-  TCarrierWork = record Proc: TCarrierProc; Data: Pointer; end;
+
+  TCarrierWork = record
+    Proc: TCarrierProc;
+    Data: Pointer;
+  end;
+
   TScheduledTask = class
   private
     FOwner: TFiberScheduler;
@@ -37,7 +53,8 @@ type
     FTrace: TSchedulerTaskTrace;
     FDeadline: Int64;
     FQueued, FRelease: Boolean;
-    {$PUSH}{$WARN 3018 OFF}
+    {$PUSH}
+    {$WARN 3018 OFF}
     constructor Create(AOwner: TFiberScheduler; AProc: TScheduledProc; AData: Pointer);
     {$POP}
     procedure RequireCurrent;
@@ -69,6 +86,7 @@ type
     property Scheduler: TFiberScheduler read GetScheduler;
     property LocalValue: Pointer read GetLocalValue write SetLocalValue;
   end;
+
   TFiberScheduler = class
   private
     FOwner: TThreadID;
@@ -126,11 +144,16 @@ type
     property ResumeGeneration: Int64 read GetResumeGeneration;
     property ResumeEpochUs: Int64 read GetResumeEpochUs;
   end;
+
 implementation
-uses FiberRuntime.Platform;
+
+uses
+  FiberRuntime.Platform;
+
 type
   TNativeSchedulerDriver = class(TSchedulerDriver)
-  private FTimer: TPlatformTimer;
+  private
+    FTimer: TPlatformTimer;
   public
     constructor Create;
     destructor Destroy; override;
@@ -139,28 +162,58 @@ type
     procedure WaitUntil(DeadlineUs: Int64); override;
     procedure Wake; override;
   end;
+
 function TSchedulerDriver.ClockGeneration: Int64;
-begin Result := 0; end;
+begin
+  Result := 0;
+end;
+
 function TNativeSchedulerDriver.ClockGeneration: Int64;
-begin Result := FTimer.SuspendGeneration; end;
+begin
+  Result := FTimer.SuspendGeneration;
+end;
+
 function Terminal(T: TScheduledTask): Boolean;
-begin Result := T.FContext.State in [fsCompleted, fsCancelled, fsFaulted]; end;
+begin
+  Result := T.FContext.State in [fsCompleted, fsCancelled, fsFaulted];
+end;
+
 function AddDuration(Now, Duration: Int64): Int64;
 begin
-  if Duration < 0 then raise EFiberUsage.Create('Duration must be nonnegative');
-  if Now > High(Int64) - Duration then Result := High(Int64)
-  else Result := Now + Duration;
+  if Duration < 0 then
+    raise EFiberUsage.Create('Duration must be nonnegative');
+  if Now > High(Int64) - Duration then
+    Result := High(Int64)
+  else
+    Result := Now + Duration;
 end;
+
 constructor TNativeSchedulerDriver.Create;
-begin inherited Create; FTimer := TPlatformTimer.Create; end;
+begin
+  inherited Create;
+  FTimer := TPlatformTimer.Create;
+end;
+
 destructor TNativeSchedulerDriver.Destroy;
-begin FTimer.Free; inherited; end;
+begin
+  FTimer.Free;
+  inherited;
+end;
+
 function TNativeSchedulerDriver.NowUs: Int64;
-begin Result := FTimer.NowUs; end;
+begin
+  Result := FTimer.NowUs;
+end;
+
 procedure TNativeSchedulerDriver.WaitUntil(DeadlineUs: Int64);
-begin FTimer.WaitUntilOrWake(DeadlineUs); end;
+begin
+  FTimer.WaitUntilOrWake(DeadlineUs);
+end;
+
 procedure TNativeSchedulerDriver.Wake;
-begin FTimer.Notify; end;
+begin
+  FTimer.Notify;
+end;
 {$I scheduler/task.inc}
 {$I scheduler/lifecycle.inc}
 {$I scheduler/pump.inc}

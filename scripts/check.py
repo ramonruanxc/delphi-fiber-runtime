@@ -17,6 +17,7 @@ from runtime_report import validate_execution as analyze_runtime
 from references import collect as collect_references
 from compatibility import probe
 from provenance import dirty as repository_dirty
+from build_example import build_example
 
 
 def expected_failure(code, output, assertion):
@@ -221,6 +222,9 @@ def main():
         (out / ('runtime-' + name + '.json')).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
     if args.references:
         summary['comparisons'] = collect_references(build, benchmark, args.fpc, ROOT, out, context_flags)
+    quickstart = build_example(ROOT, out / 'quickstart', args.fpc)
+    summary['quickstart_binary_sha256'] = hashlib.sha256(quickstart.read_bytes()).hexdigest()
+    summary['checks']['QuickStart'] = (out / 'quickstart/run.log').read_text(encoding='utf-8').strip()
     (out / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n', encoding='utf-8')
     print('PASS all functional checks; timing is descriptive')
 

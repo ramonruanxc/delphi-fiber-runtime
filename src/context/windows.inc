@@ -1,5 +1,9 @@
-const ContextFloatSwitch = 1;
-type TNativeFiberEntry = procedure(Data: Pointer); stdcall;
+const
+  ContextFloatSwitch = 1;
+
+type
+  TNativeFiberEntry = procedure(Data: Pointer); stdcall;
+
 function ContextConvertThread(Data: Pointer; Flags: DWORD): Pointer; stdcall;
   external 'kernel32.dll' name 'ConvertThreadToFiberEx';
 function ContextConvertBack: BOOL; stdcall;
@@ -12,9 +16,11 @@ procedure ContextSwitchFiber(Fiber: Pointer); stdcall;
 procedure ContextDeleteFiber(Fiber: Pointer); stdcall;
   external 'kernel32.dll' name 'DeleteFiber';
 
-{$PUSH}{$S-}
+{$PUSH}
+{$S-}
 procedure NativeEntry(Data: Pointer); stdcall;
-var Task: TFiberTask;
+var
+  Task: TFiberTask;
 begin
   Task := TFiberTask(Data);
   { StackTop reads the native TIB. Requested reserve rounds to 64 KiB;
@@ -68,6 +74,12 @@ begin
 end;
 
 procedure NativeDestroy(Task: TFiberTask);
-begin ContextDeleteFiber(Task.FNative); Task.FNative := nil; end;
+begin
+  ContextDeleteFiber(Task.FNative);
+  Task.FNative := nil;
+end;
+
 function NativeBackend: string;
-begin Result := 'windows-native-fibers-float-switch'; end;
+begin
+  Result := 'windows-native-fibers-float-switch';
+end;

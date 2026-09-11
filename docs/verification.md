@@ -86,11 +86,25 @@ The requested 256 KiB per task is a stack reservation parameter, not a measureme
 of committed memory. Guard pages add overhead; no overflow-recovery or leak-freedom
 claim follows from these functional tests.
 
-The source package builds PeriodicDemo, ContextDemo and RuntimeDemo in a clean
-consumer. Each native archive contains these three demos, their evidence and
-MIT/Boost notices. All three hashes must match the same clean revision's summary.
+The source package builds PeriodicDemo, ContextDemo, RuntimeDemo and QuickStart
+in a clean consumer. Each native archive contains these four demos, their
+evidence and MIT/Boost notices. All four hashes must match the same clean
+revision's summary.
 Nonignored untracked inputs also make the repository dirty. ReferenceDemo requires
 optional pinned benchmark inputs and is not in the native runtime distribution.
+
+CI also downloads Boss 3.0.17 using pinned official release checksums and runs
+`scripts/boss_consumer.py` on all four hosts. A fresh project and isolated
+`BOSS_HOME` install the requested remote branch or tag through Boss. The installed
+cache's Git revision must equal the expected commit: silent version fallback is
+a failure. Boss exports the dependency without `.git`, so verification addresses
+its isolated cache explicitly and compares every exported source file with that
+commit (allowing Boss's Pascal CRLF normalization). The consumer's parent Git
+checkout cannot substitute for dependency provenance.
+The installed package's own build helper then compiles and runs QuickStart,
+including the Unix native helper. Logs, consumer manifests and a binary hash
+are retained under `build/boss-consumer/`. Plain unversioned installation is
+verified separately after publication; it can resolve differently as tags change.
 
 FPC 3.2.2 context support is an experiment with a narrow RTL adapter. Active
 exception-handler/unwind suspension, allocator/error-hook suspension, asynchronous
@@ -111,7 +125,11 @@ NotificationTests covers preposted signals, coalescing, parking races, cancellat
 and resource churn. Paired-clock tests exercise uncertainty, offset changes and
 native availability. SchedulerTests uses virtual time and producer handshakes for
 bounded admission, FIFO turns, delayed tasks, duplicate wakes, Post rollback,
-cooperative timeout, ownership and clock-fault cleanup. ChannelTests covers
+cooperative timeout, ownership and clock-fault cleanup. It also covers
+carrier preemption separately from virtual deadline assertions: the resume
+condition test deliberately pauses for 20 ms under a 2 s cleanup safety budget
+while still requiring virtual time 10 us and final timer observations at 100 us.
+ChannelTests covers
 full/empty predicates, close/drain and cancellation. ServiceTests covers fixed
 epoch across suspension, skips, independent stop and retained live resources.
 ServiceResumeTests verifies idle and active resume, segment accounting and

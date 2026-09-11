@@ -1,13 +1,23 @@
 unit FiberRuntime.EventHub;
-{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
+
 interface
-uses FiberRuntime.Scheduler, FiberRuntime.Service, FiberRuntime.ServiceHooks;
+
+uses
+  FiberRuntime.Scheduler,
+  FiberRuntime.Service,
+  FiberRuntime.ServiceHooks;
+
 type
   TFiberEventHub = class;
   TServiceEndpoint = class;
   TServiceSubscription = class;
   TServiceEventProc = procedure(Task: TScheduledTask; Source: TServiceEndpoint;
     const Payload: IInterface; Data: Pointer);
+
   TServiceEndpoint = class(TServiceHooks)
   private
     FHub: TFiberEventHub;
@@ -24,6 +34,7 @@ type
     procedure Detach; override;
     property Closed: Boolean read GetClosed;
   end;
+
   TServiceSubscription = class
   private
     FHub: TFiberEventHub;
@@ -38,12 +49,14 @@ type
     procedure BeforeDestruction; override;
     property Task: TScheduledTask read GetTask;
   end;
+
   TEventDelivery = record
     Source: TServiceEndpoint;
     Recipient: TServiceSubscription;
     Payload: IInterface;
     Sequence: Int64;
   end;
+
   TPostEnvelope = record
     Hub: TFiberEventHub;
     Source: TServiceEndpoint;
@@ -51,6 +64,7 @@ type
     Used: Boolean;
   end;
   PPostEnvelope = ^TPostEnvelope;
+
   TFiberEventHub = class
   private
     FScheduler: TFiberScheduler;
@@ -91,22 +105,40 @@ type
     property AdmittedCount: Int64 index 10 read GetMetric;
     property AbortedCount: Int64 index 11 read GetMetric;
   end;
+
 implementation
-uses SysUtils, FiberRuntime.Context;
+
+uses
+  SysUtils,
+  FiberRuntime.Context;
+
 procedure DispatchEntry(Task: TScheduledTask; Data: Pointer);
-begin TServiceSubscription(Data).Execute(Task) end;
-procedure PostedDelivery(Data: Pointer);
-var Envelope: PPostEnvelope; Hub: TFiberEventHub;
-  Source: TServiceEndpoint; Payload: IInterface;
 begin
-  Envelope := PPostEnvelope(Data); Hub := Envelope.Hub;
+  TServiceSubscription(Data).Execute(Task)
+end;
+
+procedure PostedDelivery(Data: Pointer);
+var
+  Envelope: PPostEnvelope;
+  Hub: TFiberEventHub;
+  Source: TServiceEndpoint;
+  Payload: IInterface;
+begin
+  Envelope := PPostEnvelope(Data);
+  Hub := Envelope.Hub;
   EnterCriticalSection(Hub.FLock);
   try
-    Source := Envelope.Source; Payload := Envelope.Payload;
-    Envelope.Payload := nil; Envelope.Source := nil; Envelope.Used := False;
+    Source := Envelope.Source;
+    Payload := Envelope.Payload;
+    Envelope.Payload := nil;
+    Envelope.Source := nil;
+    Envelope.Used := False;
     Dec(Hub.FPosts);
-  finally LeaveCriticalSection(Hub.FLock) end;
-  if not Hub.Publish(Source, Payload) then Inc(Hub.FPostRejected);
+  finally
+    LeaveCriticalSection(Hub.FLock)
+  end;
+  if not Hub.Publish(Source, Payload) then
+    Inc(Hub.FPostRejected);
 end;
 {$I events/lifecycle.inc}
 {$I events/delivery.inc}

@@ -10,14 +10,16 @@
   holding native locks. RaiseList is only an active-object guard, NOT universal
   unwinding detection. Async signals in this tiny switch interval are unsupported.
   Other RTL threadvars remain shared and are not claimed to be fiber-local. }
-{$PUSH}{$S-}
+{$PUSH}
+{$S-}
 {$IFNDEF WINDOWS}
 function ContextPush(Ft: LongInt; Buf, NewAddr: Pointer): PJmp_buf;
   external name 'FPC_PUSHEXCEPTADDR';
 procedure ContextPop; external name 'FPC_POPADDRSTACK';
 
 procedure InstallHead(Head: PExceptAddr);
-var Node: TExceptAddr;
+var
+  Node: TExceptAddr;
 begin
   ContextPush(0, nil, @Node);
   Node.Next := Head;
@@ -30,12 +32,17 @@ begin
   System.StackBottom := Value.Bottom;
   System.StackLength := Value.Length;
   {$IFNDEF WINDOWS}
-  {$IFNDEF CONTEXT_PROVE_RTL}InstallHead(Value.Head);{$ENDIF}
+  {$IFNDEF CONTEXT_PROVE_RTL}
+  InstallHead(Value.Head);
+  {$ENDIF}
   {$ENDIF}
 end;
 
 procedure SwitchRTL(var Source: TContextRTL; const Target: TContextRTL);
-{$IFNDEF WINDOWS}var Node: TExceptAddr;{$ENDIF}
+{$IFNDEF WINDOWS}
+var
+  Node: TExceptAddr;
+  {$ENDIF}
 begin
   Source.Bottom := System.StackBottom;
   Source.Length := System.StackLength;

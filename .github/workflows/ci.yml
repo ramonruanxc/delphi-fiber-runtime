@@ -40,6 +40,18 @@ jobs:
         run: python scripts/check.py --references
       - name: Source archive and clean consumer check
         run: python scripts/package.py
+      - name: Boss install and installed-source consumer check
+        env:
+          BOSS_TEST_REF: ${{ github.head_ref || github.ref_name }}
+          BOSS_TEST_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          BOSS_TEST_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+        shell: python
+        run: |
+          import os, subprocess, sys
+          subprocess.run([sys.executable, 'scripts/boss_consumer.py',
+              '--ref', os.environ['BOSS_TEST_REF'],
+              '--expected-commit', os.environ['BOSS_TEST_COMMIT'],
+              '--repository', os.environ['BOSS_TEST_REPOSITORY']], check=True)
       - name: Upload checks and release candidates
         if: always()
         uses: actions/upload-artifact@v4
@@ -48,4 +60,5 @@ jobs:
           if-no-files-found: error
           path: |
             build/check/
+            build/boss-consumer/
             dist/
