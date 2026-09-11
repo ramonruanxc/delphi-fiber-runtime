@@ -96,6 +96,13 @@ unvalidated compiler versions remain outside its qualification. See the
 
 ## Integrated runtime and comparisons
 
+Windows CI installs the official Lazarus 4.4/FPC 3.2.2 x64 distribution through
+`scripts/install-fpc-windows.ps1`, with bounded mirror downloads and a pinned
+SHA-256. The retrieved installer had a valid Authenticode signature from Stichting
+Programming Free Pascal & Lazarus Foundation. CI requires the same hash and
+verifies compiler version/CPU after installation. This replaces an automatic
+SourceForge download that stalled until the hosted job timed out.
+
 NotificationTests covers preposted signals, coalescing, parking races, cancellation
 and resource churn. Paired-clock tests exercise uncertainty, offset changes and
 native availability. SchedulerTests uses virtual time and producer handshakes for
