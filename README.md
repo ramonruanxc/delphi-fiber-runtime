@@ -1,156 +1,286 @@
 # Delphi Fiber Runtime
 
 [![CI](https://github.com/ramonruanxc/delphi-fiber-runtime/actions/workflows/ci.yml/badge.svg)](https://github.com/ramonruanxc/delphi-fiber-runtime/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Runtime Pascal em desenvolvimento, inspirado em virtual threads e nos projetos
-[delphi-concurrent-pool](https://github.com/ramonruanxc/delphi-concurrent-pool) e
-[delphi-service-host](https://github.com/ramonruanxc/delphi-service-host).
+Periodic services, cooperative waits and managed events in Object Pascal.
+Each service reuses a task with its own stack; many tasks share one native thread.
+A service waiting for a timer or channel releases that thread to another task.
 
-**Runtime cooperativo com serviços periódicos, esperas e canais limitados.**
-Serviços reutilizam uma tarefa com pilha própria. Ao aguardar um temporizador ou
-canal, liberam o executor para outras tarefas. O agendador periódico também pode
-ser usado de forma independente. Implementação e limites seguem o
-[projeto aprovado](docs/superpowers/specs/2026-09-10-delphi-fiber-runtime-design.md).
+The runtime is experimental. The integrated fiber API currently requires
+**Free Pascal 3.2.2** on the targets listed below. The standalone periodic core
+is separate; Delphi support is not implied by the project name.
 
-## O que já pode ser exercitado
+```pascal
+Scheduler := TFiberScheduler.Create(2);           { producer + subscriber task }
+Hub := TFiberEventHub.Create(Scheduler, 16, 1);   { deliveries, subscriptions }
+Producer := TFiberService.Create(Scheduler, 50000, PublishTick, nil);
+Receiver := TFiberService.Create(Scheduler, 50000, DormantTick, nil);
+Publisher := Hub.Attach(Producer);
+Subscription := Hub.Subscribe(Hub.Attach(Receiver), ReceiveMessage, nil);
 
-- Deadlines monotônicos: `epoch + n * period`, sem acumular o tempo do callback.
-- Uma execução ativa por agendamento; ciclos perdidos são descartados e contados.
-- Windows: QPC e waitable timer; Linux: timerfd/eventfd; macOS: Mach clock/kqueue.
-- Espera nativa até o deadline, sem loop periódico de `Sleep(1)` no agendador.
-- CSV com deadline, início e fim; relatórios com percentis e ciclos descartados.
-- CI multiplataforma, testes negativos com falha exata e releases por tag.
-- Fibers experimentais: chamadas aninhadas, cancelamento cooperativo, contenção
-  de exceções e um campo explícito para dados locais de cada tarefa.
-- Agendador FIFO limitado, mailbox entre threads e notificações sem perder sinais.
-- `Delay`, `AwaitUntil` e canais com contrapressão, fechamento e limpeza.
-- Serviços com uma invocação ativa, parada individual e timeout sem destruir pilhas.
-- Eventos com payload gerenciado, capacidade limitada e descarte na parada.
-- Retomada detectada inicia outro segmento periódico sem reproduzir ciclos antigos.
-- Relógios inválidos interrompem o despacho e permitem limpeza cooperativa.
+Producer.Start;                                  { period: 50,000 microseconds }
+Scheduler.RunUntil(Scheduler.NowUs + 275000);     { pump on the creating thread }
+StopAll;                                        { check every Stop result }
+```
 
-`Yield` devolve explicitamente o controle ao executor. Ele pode então retomar
-outra tarefa. Código bloqueante arbitrário ainda bloqueia a thread. Use operações
-compatíveis ou execute o trabalho legado fora do carrier e envie o resultado por
-`Post`, respeitando o contrato de capacidade e duração dos dados.
+This is the wiring from [QuickStart.dpr](demo/QuickStart.dpr). Its complete
+program includes the payload, callbacks, fault checks and cleanup. The receiver
+is a dormant service that owns a subscription: it does not need `Start` to
+receive events. `StopAll` is an application procedure, shown below.
 
-## Executar
+## Why this exists
 
-Instale Free Pascal 3.2.2 e Python 3.12. No Linux, instale as unidades FCL e
-`build-essential`; no macOS, FPC pelo Homebrew e as ferramentas de compilação
-da Apple. O experimento Unix compila um helper C/assembly estático. Os comandos são iguais no
-PowerShell e em shells Unix:
+A native thread for every long-lived service is easy to reason about, but each
+thread carries its own scheduling and stack cost. A worker pool shares threads,
+but a job that blocks keeps its worker occupied. This runtime explores a third
+execution model: a service keeps a stack across nested calls and explicitly
+suspends while another service uses the same carrier thread.
 
-```text
-python scripts/check.py --references
+The caller owns and pumps that carrier. There is no automatically created worker
+pool, task migration, transparent blocking-I/O interception or GUI dispatch lane.
+This is useful for periodic workflows built around compatible waits. Arbitrary
+blocking library calls still block every task on the carrier.
+
+| Project / model | Unit of work | Where work executes | Waiting and lifetime |
+|---|---|---|---|
+| [delphi-concurrent-pool](https://github.com/ramonruanxc/delphi-concurrent-pool) | Submitted jobs | Fixed set of native worker threads | Blocking work occupies a worker; shutdown drains or drops queued jobs |
+| [delphi-service-host](https://github.com/ramonruanxc/delphi-service-host) | Long-lived services | One native thread per service; event delivery has explicit lanes | Service cancellation, thread joining and pending-event disposal |
+| This runtime | Persistent stackful tasks and periodic services | One owner thread per scheduler | Compatible waits suspend tasks; stop pumps cooperative cleanup |
+| Java virtual threads, the inspiration | Virtual threads managed by the JVM | JVM-managed carriers | The JVM supplies its own scheduling and blocking integration; this Pascal runtime implements neither JVM semantics nor API compatibility |
+
+The sibling libraries are design and benchmark references. They are not runtime
+or Boss dependencies. Measurements do not establish universal superiority over
+those execution models.
+
+## Install
+
+With [Boss](https://github.com/HashLoad/boss), run this in your consumer project:
+
+```sh
+boss install github.com/ramonruanxc/delphi-fiber-runtime
+```
+
+For a reproducible version, use
+`boss install github.com/ramonruanxc/delphi-fiber-runtime@v0.3.1-prototype.1`.
+Boss 3.0.17 installs it under
+`modules/github_com_ramonruanxc_delphi-fiber-runtime/`. Add that directory's
+`src/` to the FPC unit search path and keep its backend subdirectories.
+
+Boss retrieves source; it does not expand the compiler support matrix or compile
+the Unix native helper. The [getting-started guide](docs/getting-started.md)
+shows the complete consumer build, including the helper.
+
+By hand:
+
+```sh
+git clone https://github.com/ramonruanxc/delphi-fiber-runtime.git
+```
+
+Add that clone's `src/` to your unit search path. Windows uses native fibers and
+needs no extra native archive. Linux and macOS also need the shipped static
+context helper; retain `native/context/` and its included license when copying
+source. No separately installed Boost or C++ runtime is required.
+
+## Writing a periodic service
+
+Services use a plain procedure and borrowed `Data: Pointer`, rather than a
+subclass. The callback receives its persistent task and the scheduled tick:
+
+```pascal
+procedure PublishTick(Task: TScheduledTask; const Tick: TPeriodicTick;
+  Data: Pointer);
+var
+  Message: IMessage;
+begin
+  Message := TMessage.Create('Hello from tick ' + IntToStr(Tick.Index));
+  if not Publisher.Publish(Message) then
+    raise Exception.Create('Event capacity exhausted');
+  Task.Delay(5000);  { Other tasks can run during this 5 ms wait. }
+end;
+```
+
+`IMessage` and `TMessage` are the small immutable interface payload defined in
+QuickStart. `Publisher` is the endpoint attached to this service. A real callback
+can obtain its own state through `Data`; that state must outlive all callbacks
+and any unsuccessful stop attempt.
+
+`TFiberService.Create(Scheduler, PeriodUs, Callback, Data)` creates a dormant
+service. `Start` fixes its epoch and creates one persistent task. Start it once:
+services cannot restart. The first activation is at `epoch + period`.
+
+Deadlines follow `epoch + n * period`, measured by a monotonic clock. Callback
+execution time does not accumulate as schedule drift. A suspended callback is
+still active, so a service never overlaps with itself. When it finishes, elapsed
+cycles are skipped and counted; when dispatch is late, older due cycles are
+skipped and only the latest eligible cycle runs.
+
+For example, a 1 ms service starting at 1.04 ms and finishing at 3.20 ms skips the
+2 ms and 3 ms cycles. Its next deadline is 4 ms. Inspect `StartedCount` and
+`SkippedCount`; choosing a 1,000 us period does not guarantee 1 ms delivery latency.
+
+## Subscribing and carrying data
+
+```pascal
+procedure ReceiveMessage(Task: TScheduledTask; Source: TServiceEndpoint;
+  const Payload: IInterface; Data: Pointer);
+begin
+  LastMessage := (Payload as IMessage).Text;
+  Inc(Received);
+end;
+```
+
+`Hub.Subscribe(RecipientEndpoint, ReceiveMessage, Data)` creates a persistent
+dispatcher task. Each subscription receives publications from the hub's open
+sources; this API has no built-in topic or source filters. `Source` identifies
+the publisher if your handler needs to select events. Handlers run on the owner
+carrier and may use the same compatible waits as service callbacks.
+
+`Endpoint.Publish(Payload)` is owner-only and never waits for capacity. It admits
+the entire fanout to current subscriptions or returns `False`. Each accepted
+pending delivery retains an interface reference. The publisher can release its
+reference immediately; the final reference releases the payload. Keep shared
+payloads immutable, or synchronize changes explicitly.
+
+Hub capacity bounds pending deliveries, with active handlers tracked separately.
+For two subscribers, one publication needs two pending slots. Subscription tasks
+also consume scheduler capacity. `TFiberScheduler.Create(MaxTasks)` limits total
+`Spawn` calls over its lifetime: completed tasks do not return admission slots.
+
+For native producer threads, `Endpoint.Post(Payload)` accepts a bounded envelope
+for later owner-side publication. A `True` return is envelope acceptance, not a
+promise that deferred fanout will fit. Check `PostRejectedCount` as well as
+`PostAcceptedCount`. Retain the hub while producers can post; cross-thread payload
+reference counting must be thread-safe. Reference-management code must not raise,
+suspend or reenter the runtime.
+
+## Waiting and stopping
+
+`Task.Yield` gives another task a turn. `Task.Delay(DurationUs)` and
+`Task.AwaitUntil(DeadlineUs)` suspend until eligible or cancelled.
+`TFiberChannel.Send` / `Receive` suspend on full / empty channels; `TrySend` does
+not suspend. Raw channel values are borrowed pointers, unlike managed hub events.
+`Close` wakes waiters and allows buffered values to drain.
+
+These operations run on the scheduler's creating thread. `Scheduler.Post` and
+`Scheduler.RequestStop` are explicit cross-thread entry points; most other APIs
+are owner-only. Scheduler posts borrow their data and cannot suspend. The idle
+carrier parks using the native timer and wakeup backend rather than polling.
+
+Shutdown is part of the communication contract. Stopping an attached source
+blocks its publication, discards its pending deliveries and waits for active
+handlers attributed to it. Stopping a recipient cancels its subscriptions and
+settles their handlers. Successful service `Stop` means no subsequent invocation
+or attributed event callback. It does not mean every queued event was delivered.
+
+```pascal
+Producer.Cancel;
+Receiver.Cancel;
+if not Producer.Stop(1000000) then
+  raise Exception.Create('Producer stop timed out; resources retained');
+if not Receiver.Stop(1000000) then
+  raise Exception.Create('Receiver stop timed out; resources retained');
+if not Scheduler.Stop(1000000) then
+  raise Exception.Create('Scheduler stop timed out; resources retained');
+
+Producer.Free;
+Receiver.Free;
+Hub.Free;
+Scheduler.Free;
+```
+
+Run that sequence on the owner, outside callbacks. **If any stop times out,
+retain the objects, stacks and borrowed data and retry cleanup later.** Do not
+put unconditional `Free` calls after a failed stop in a `finally` block.
+QuickStart implements this sequence with partial-construction handling. Its
+failure path exits nonzero without destroying live resources.
+
+Timeouts are cooperative budgets: a callback that blocks or never yields cannot
+be forcibly interrupted. Cancellation wakes compatible waits and lets Pascal
+`finally` blocks unwind. Do not suspend inside exception handlers, during stack
+unwinding or while holding native locks. `threadvar` remains shared by tasks on
+the carrier; use explicit task state (`LocalValue`) for task-local data.
+
+Escaping callback faults stop the task and remain available through `Task.State`,
+`Task.ErrorClass` and `Task.ErrorMessage`. A clean stop alone does not establish
+successful work; inspect both service and subscription task faults. Never free
+scheduler-owned tasks or hub-owned endpoint/subscription handles yourself.
+
+## Units and boundaries
+
+| Unit | Responsibility |
+|---|---|
+| `FiberRuntime.Schedule` | Standalone fixed-rate deadline arithmetic, skipping and segments |
+| `FiberRuntime.Platform` | Monotonic clocks, native timers, notifications and resume detection |
+| `FiberRuntime.Context` | Stackful context switching and compiler-specific RTL adapters |
+| `FiberRuntime.Scheduler` | Bounded FIFO dispatch, tasks, compatible timers, mailbox and cancellation |
+| `FiberRuntime.Channel` | Bounded FIFO channels of borrowed pointers |
+| `FiberRuntime.Service` | Persistent periodic task and service stop lifecycle |
+| `FiberRuntime.ServiceHooks` | Lifecycle boundary used to attach service communication |
+| `FiberRuntime.EventHub` | Managed event payloads, bounded fanout and source/recipient cleanup |
+
+`Schedule` and `Platform` can be used without importing `Context`. The integrated
+path layers services and channels over the scheduler and context backend. The
+[periodic](docs/periodic-contract.md), [context](docs/context-contract.md) and
+[runtime](docs/runtime-contract.md) contracts specify the detailed invariants.
+
+## Running examples and tests
+
+Install FPC 3.2.2 and Python 3.12. Linux needs the FCL units and a C toolchain;
+macOS needs the Apple command-line tools. Run from the repository root:
+
+```sh
+python scripts/check.py
 python scripts/package.py
 ```
 
-Execute esses scripts a partir de um clone Git. O primeiro comando compila,
-executa os testes, demos integrados e comparações com as revisões fixadas dos
-projetos de referência. `--references` requer acesso ao GitHub; sem essa opção,
-os testes e demos próprios continuam disponíveis. Os dados
-ficam em `build/check/`; o segundo cria os pacotes em `dist/` e compila um
-consumidor extraído em um caminho com espaços. O empacotamento usa arquivos
-rastreados pelo Git; execute a partir de um clone do repositório.
+The check runner builds and runs the functional suites, named negative builds
+and demos. Packaging uses tracked Git files, then compiles and runs an extracted
+consumer in a path with spaces. Output goes to `build/check/` and `dist/`.
+Use `python scripts/check.py --references` to also fetch and compare the pinned
+sibling revisions. `--core-only` exercises the standalone core without contexts.
 
-Para registrar CPU, memória e threads dos cenários periódicos por amostragem, instale opcionalmente
-`python -m pip install psutil==7.2.2`. O observador externo pode perturbar os
-tempos; os relatórios identificam sua presença e limitações.
+For just the small example, see the [QuickStart build commands](docs/getting-started.md#build-quickstart).
+From a clone, `python scripts/build_example.py` builds and runs it, preparing the
+Unix native helper where required.
+The other demos answer different questions:
 
-O executável `build/check/demo/PeriodicDemo` (`.exe` no Windows) aceita:
+| Demo | Purpose |
+|---|---|
+| `QuickStart` | One periodic publisher, an interface payload, a subscriber and checked cleanup |
+| `PeriodicDemo --cycles 10000 --period-us 1000 --work-us 100` | Standalone timing CSV with planned deadlines and skips |
+| `ContextDemo` | Stackful tasks, repeated suspension and cancellation |
+| `RuntimeDemo --services 8 --cycles 200 --await-us 2500` | Integrated service/event measurements with suspended callbacks |
 
-```text
-PeriodicDemo --cycles 10000 --period-us 1000 --work-us 100
-```
+Timing reports are descriptive. A 1 ms planned period is not a hard real-time
+guarantee. `scripts/report.py` can assess explicit lateness thresholds, counting
+skips as violations; qualification also needs an agreed workload, hardware,
+duration and power configuration. See [verification](docs/verification.md).
 
-`--work-us` simula trabalho de CPU. Os registros são pré-alocados e impressos
-somente após a medição. Por padrão, `--work-us` é zero.
+## Compiler and platform status
 
-O demo integrado usa vários serviços e um receptor de eventos:
+The [support matrix](docs/support-matrix.md) links the revision-specific evidence.
+Functional validation is separate from timing or physical suspend qualification.
 
-```text
-RuntimeDemo --services 8 --cycles 200 --work-us 100
-RuntimeDemo --services 8 --cycles 200 --await-us 2500
-```
+| Tier | Combinations / limitation |
+|---|---|
+| Integrated runtime functionally exercised | FPC 3.2.2: Windows x86/x64, Linux x64 (hosted native and local WSL2), macOS Intel x64 and ARM64 hosted runners |
+| Standalone periodic core | Tested on those FPC targets; it has no context dependency |
+| Delphi | Unvalidated. The installed Delphi 12 edition refused CLI compilation; the integrated context unit rejects Delphi builds |
+| Other FPC versions / CPUs | Require their own RTL adapters and execution evidence; context guards reject unsupported combinations |
+| Outside this milestone | Mobile, transparent blocking I/O, task migration, hard real-time guarantees and qualified physical suspend/resume cycles |
 
-O segundo cenário suspende cada callback por 2,5 ms para verificar convivência
-entre serviços e descarte dos ciclos que passaram durante a invocação. O JSON
-registra eventos aceitos, recebidos e descartados, etapas de despacho por serviço
-e observações do heap. Invocações que atravessam uma retomada são separadas das
-distribuições de execução contínua.
-Consulte a [API e regras de uso](docs/runtime-contract.md).
+Windows uses native fibers with floating-point state preservation. Unix links
+the bundled Boost.Context 1.85.0 assembly through a small C helper; `cthreads`
+must appear first in the program's `uses` clause. Custom thread managers and
+nondefault exception/sanitizer configurations are unqualified. Explicit `in`
+paths in QuickStart aid source navigation; opening it in a Delphi IDE does not
+remove the compiler restriction.
 
-## Como interpretar 1 ms
+Valid detected resumes rebase periodic segments after active invocations finish;
+invalid clocks stop admission and request cooperative cleanup. Older Windows
+versions may report suspend detection unavailable. Consult the contracts before
+building a policy around suspend behavior.
 
-1 ms é o **período planejado**. Sistemas operacionais de uso geral podem iniciar
-a execução com atraso. O relatório mede esse atraso e também inclui todos os
-ciclos descartados; a média dos callbacks executados não certifica a cadência.
-
-Sem um perfil explícito, o resultado é `descriptive`. Para testar uma tolerância
-definida pelo seu cenário, forneça ambos os limites (este é apenas um exemplo):
-
-```text
-python scripts/report.py build/check/idle.csv --max-lateness-us 100 --max-violation-fraction 0.01
-```
-
-Esse comando avalia atraso de até 100 us em 99% dos ciclos planejados, contando
-descartes como violações, e retorna `threshold_assessment`. O resultado continua
-descritivo: esses dois limites não certificam o ambiente. Uma qualificação real
-exige também hardware, duração, carga e configuração de energia acordados.
-
-## Experimento de fibers
-
-`build/check/context-demo/ContextDemo` (`.exe` no Windows) alterna 16 tarefas na
-mesma thread, com 1.000 suspensões por tarefa. O JSON registra conclusões,
-suspensões, chamadas de retomada e tempo total. A média inclui o trabalho mínimo
-do demo; não é uma certificação de latência nem um benchmark isolado da instrução
-de troca de contexto. A criação das pilhas ocorre antes da janela de medição.
-
-As tarefas ficam na thread de origem. `Cancel` apenas solicita cancelamento;
-retomar uma tarefa suspensa permite que ela execute sua limpeza. A biblioteca
-rejeita a destruição de pilhas ainda suspensas. `threadvar` continua compartilhado
-entre tarefas da mesma thread; `LocalValue` é o campo explícito por tarefa.
-
-Não suspenda dentro de tratadores de exceção, durante desenrolamento da pilha ou
-segurando locks nativos. O detector de exceção ativa não identifica todos os
-casos de desenrolamento. As restrições e a API completa estão no
-[contrato de contextos](docs/context-contract.md).
-
-## Portabilidade
-
-A API separa política de agendamento e implementação do sistema operacional.
-Compatibilidade universal não é presumida: cada combinação de compilador,
-versão, sistema e CPU precisa de evidência própria na [matriz de suporte](docs/support-matrix.md).
-Uma execução com FPC não valida Delphi.
-
-O adaptador de contexto é intencionalmente limitado ao FPC 3.2.2 e aos modos de
-exceção testados. Ampliar versões exige validar o runtime de cada compilador;
-essa limitação não cria uma dependência de fibers nas unidades periódicas.
-No Unix, usa Boost.Context 1.85.0 com fontes mínimas e licença incluídas. No
-Windows, usa fibers nativas com preservação de estado de ponto flutuante.
-Programas Unix devem incluir `cthreads` primeiro no `uses`; o runtime recusa a
-configuração padrão sem gerenciador de threads. Gerenciadores customizados ainda
-não estão qualificados.
-
-Não há dependência binária dos projetos de referência no runtime. Eles são
-obtidos em revisões fixas somente para o benchmark opcional. `ReferenceDemo`
-é um consumidor de comparação e exige essas fontes; os pacotes executáveis
-distribuem PeriodicDemo, ContextDemo e RuntimeDemo.
-
-Para verificar o núcleo sem exigir o adaptador de contextos, use
-`python scripts/check.py --core-only`. Para testar um compilador Delphi licenciado:
-
-```text
-python scripts/compatibility.py --compiler dcc32 --kind delphi
-```
-
-Esse probe verifica o núcleo periódico; ele não certifica fibers. Compilador
-ausente, licença sem CLI e ausência de executável produzido resultam em falha
-explícita. A edição Delphi instalada neste ambiente recusou a compilação por CLI.
-O suporte a fibers em outras versões depende de adaptadores RTL e execução real.
-
-Consulte o [contrato](docs/periodic-contract.md), a [verificação](docs/verification.md)
-e as [notas da versão](docs/release-notes.md).
-
-Licença MIT.
+[Getting started](docs/getting-started.md) · [Evidence](docs/evidence/README.md) ·
+[Release notes](docs/release-notes.md) · [MIT license](LICENSE)
