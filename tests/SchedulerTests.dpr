@@ -50,8 +50,3 @@ begin
   TestVirtual; TestTimersFairness; TestUsage; TestStop; TestPost; TestNativePostRace; TestMailboxFairness; TestTargetAndInvalid; TestClockFault; TestDrainParkRace; TestDriverFailureRetention;
   WriteLn('PASS SchedulerTests');
 end.
-
-
-
-
-

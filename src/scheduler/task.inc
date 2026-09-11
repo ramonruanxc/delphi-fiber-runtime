@@ -63,4 +63,3 @@ function TScheduledTask.GetLocalValue: Pointer;
 begin FOwner.CheckOwner; Result := FContext.LocalValue; end;
 procedure TScheduledTask.SetLocalValue(Value: Pointer);
 begin FOwner.CheckOwner; FContext.LocalValue := Value; end;
-
