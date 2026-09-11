@@ -14,7 +14,8 @@ Ubuntu); macOS needs Apple command-line tools.
 
 ## Install with Boss
 
-From a consumer project with Boss installed:
+Use your consumer project directory with Boss installed. If the project does
+not have `boss.json` yet, run `boss init` before installing the dependency:
 
 ```sh
 boss install github.com/ramonruanxc/delphi-fiber-runtime

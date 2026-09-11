@@ -55,7 +55,8 @@ those execution models.
 
 ## Install
 
-With [Boss](https://github.com/HashLoad/boss), run this in your consumer project:
+Install from your consumer project with [Boss](https://github.com/HashLoad/boss).
+For a new project without `boss.json`, initialize it with `boss init` first:
 
 ```sh
 boss install github.com/ramonruanxc/delphi-fiber-runtime

@@ -1,5 +1,8 @@
 # First prototype measurements — 2026-09-10
 
+The [repository conventions update](conventions-2026-09-11.md) records Pascal
+formatting, Boss installation, QuickStart and the verified v0.3.1 packages.
+
 The complete runtime has [four-platform integration evidence](runtime-2026-09-11.md),
 including service events, dispatch stages and actual reference comparisons.
 
