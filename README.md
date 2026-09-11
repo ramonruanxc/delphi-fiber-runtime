@@ -62,31 +62,22 @@ For a new project without `boss.json`, initialize it with `boss init` first:
 boss install github.com/ramonruanxc/delphi-fiber-runtime
 ```
 
-To pin the documented version, merge this entry into your consumer's
-`boss.json` `dependencies` object, preserving its other dependencies and fields:
-
-```json
-{
-  "dependencies": {
-    "github.com/ramonruanxc/delphi-fiber-runtime": "0.3.1-prototype.1"
-  }
-}
-```
-
-Then run `boss install`. Use the manifest for this prerelease version:
-Boss 3.0.17's command-line version parser does not accept its full tag syntax.
 Boss 3.0.17 installs it under
 `modules/github_com_ramonruanxc_delphi-fiber-runtime/`. Add that directory's
 `src/` to the FPC unit search path and keep its backend subdirectories.
+
+Boss 3.0.17 may follow `main` even when `boss.json` specifies a version
+constraint. When the exact revision matters, use the tagged Git clone below or
+a source archive from that release.
 
 Boss retrieves source; it does not expand the compiler support matrix or compile
 the Unix native helper. The [getting-started guide](docs/getting-started.md)
 shows the complete consumer build, including the helper.
 
-By hand:
+By hand, select the documented release explicitly:
 
 ```sh
-git clone https://github.com/ramonruanxc/delphi-fiber-runtime.git
+git clone --branch v0.3.2-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
 ```
 
 Add that clone's `src/` to your unit search path. Windows uses native fibers and

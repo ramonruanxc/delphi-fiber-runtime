@@ -21,28 +21,9 @@ not have `boss.json` yet, run `boss init` before installing the dependency:
 boss install github.com/ramonruanxc/delphi-fiber-runtime
 ```
 
-To select the documented release explicitly, add or update this entry in your
-consumer's `boss.json` `dependencies` object. Merge it with existing dependencies
-and retain all other consumer fields; do not replace the entire file with this
-fragment:
-
-```json
-{
-  "dependencies": {
-    "github.com/ramonruanxc/delphi-fiber-runtime": "0.3.1-prototype.1"
-  }
-}
-```
-
-Then install from the manifest:
-
-```sh
-boss install
-```
-
-Use this manifest form for the prerelease version. Boss 3.0.17's command-line
-version parser does not accept the full `@v0.3.1-prototype.1` tag syntax and may
-finish without adding the dependency.
+Boss 3.0.17 may follow `main` even when your manifest specifies a version
+constraint. For an exact revision, use the tagged Git clone in
+[Build QuickStart](#build-quickstart) or a source archive from that release.
 
 Boss 3.0.17 uses this layout:
 
@@ -72,10 +53,11 @@ native archive and `cthreads` first, as described below.
 
 ## Build QuickStart
 
-For a manual installation, clone the repository and run from its root:
+For a manual installation of the documented release, clone its tag and run from
+the repository root:
 
 ```sh
-git clone https://github.com/ramonruanxc/delphi-fiber-runtime.git
+git clone --branch v0.3.2-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
 cd delphi-fiber-runtime
 python scripts/build_example.py
 ```
