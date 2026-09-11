@@ -146,6 +146,14 @@ Additional mutations require SCHEDULER_READY_ONCE and SERVICE_STOP_NO_CALLBACK,
 exit 1. A deliberately failing reference callback must produce REFERENCE_HOST_FAULT,
 exit 1: successful reference-host shutdown alone does not establish successful work.
 
+Reference completion fixtures deliberately park the carrier beyond the old
+1 ms grace after the measurement horizon, with one producer and eight event
+publishers. Producer tasks must still complete under one shared cleanup deadline;
+faults retain their original details. The production benchmark keeps its original
+measurement window, and the forced-preemption observations are excluded from
+performance comparisons. A persistent event subscriber does not extend the
+producer completion wait to the entire safety deadline.
+
 RuntimeDemo records every started activation, including one cancelled during a
 compatible wait, and its final cleanup timestamp. Each activation accounts for
 one accepted or rejected event; accepted deliveries complete or are explicitly

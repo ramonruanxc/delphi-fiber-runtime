@@ -77,7 +77,7 @@ shows the complete consumer build, including the helper.
 By hand, select the documented release explicitly:
 
 ```sh
-git clone --branch v0.3.2-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
+git clone --branch v0.3.3-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
 ```
 
 Add that clone's `src/` to your unit search path. Windows uses native fibers and

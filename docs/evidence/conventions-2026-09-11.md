@@ -60,6 +60,19 @@ ZIP for exact revisions; the plain Boss installation remains verified.
 Version `0.3.2-prototype.1` updates package metadata and this installation
 guidance. Its production runtime and verification code match `cd66c56`.
 
+That tag was not published as a release: its macOS Intel reference benchmark
+twice reported the same noncompleted-task check after all functional suites
+passed. The message did not record whether the task was suspended or faulted.
+The harness stopped pumping only 1 ms after the measurement horizon, so owner
+preemption could prevent a producer from resuming to observe the end of its run.
+
+Version `0.3.3-prototype.1` gives producers one shared completion budget outside
+the measurement horizon and reports task states and fault details. A test-only
+carrier pause reproduces the old failure with one producer and eight event
+publishers; both pass with the new completion logic and nonempty measurements.
+These fixture samples are excluded from performance comparisons. Production
+runtime scheduling and the measured workload horizon are unchanged.
+
 After publication, all five ZIPs and their SHA-256 file were downloaded again.
 The source archive matched all 121 tracked files from the tag. The four native
 archives matched the expected OS/CPU pairs, all 16 executable hashes and the

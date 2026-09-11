@@ -1,3 +1,8 @@
+Reference benchmark cleanup now uses a shared completion deadline separate from
+the measurement horizon. Two forced-preemption fixtures verify producer cleanup
+with and without events, and task faults report their original error details.
+Production runtime behavior and the measured workload horizon are unchanged.
+
 Installation documentation correction: Boss 3.0.17 can advance to `main` even
 when its dependency manifest requests a release version. Use the documented
 tagged Git clone or release source ZIP when the exact revision matters.

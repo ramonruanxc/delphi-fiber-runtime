@@ -94,6 +94,28 @@ def collect(build, benchmark, compiler, root, out, flags):
     sources = fetch(out / 'reference-inputs')
     binary = build(compiler, 'demo/ReferenceDemo.dpr', out / 'reference-demo',
                    extra_flags=[*flags, *['-Fu' + str(path) for path in sources]])
+    # Deliberately park producers beyond the old 1 ms completion grace. This
+    # tests shutdown only; its measurements are excluded from comparisons.
+    grace = build(compiler, 'demo/ReferenceDemo.dpr', out / 'REFERENCE_TEST_COMPLETION_GRACE',
+                  ['REFERENCE_TEST_COMPLETION_GRACE'],
+                  [*flags, *['-Fu' + str(path) for path in sources]])
+    for services, events in ((1, 0), (8, 1)):
+        name = f'reference-completion-grace-{services}'
+        completed = subprocess.run([str(grace), 'fibers', '--services', str(services),
+                                   '--cycles', '50', '--events', str(events)],
+                                  capture_output=True, text=True, timeout=15)
+        (out / (name + '.raw.json')).write_text(completed.stdout, encoding='utf-8')
+        (out / (name + '.stderr.log')).write_text(completed.stderr, encoding='utf-8')
+        if completed.returncode:
+            raise RuntimeError('Reference completion grace fixture failed: ' + completed.stderr)
+        checked = report(json.loads(completed.stdout))
+        if checked['started_activations'] == 0:
+            raise ValueError('Completion grace fixture exercised no activation')
+        if events and checked['events']['accepted'] == 0:
+            raise ValueError('Completion grace fixture exercised no event')
+        checked['fixture'] = 'forced carrier preemption; excluded from performance comparisons'
+        (out / (name + '.json')).write_text(json.dumps(checked, indent=2) + '\n', encoding='utf-8')
+    print('PASS reference completion grace with one producer and eight event publishers')
     results = {}
     for workload, work_us, event_args in (
             ('minimal', 0, []), ('cpu', 100, []),

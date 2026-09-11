@@ -57,7 +57,7 @@ For a manual installation of the documented release, clone its tag and run from
 the repository root:
 
 ```sh
-git clone --branch v0.3.2-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
+git clone --branch v0.3.3-prototype.1 --single-branch https://github.com/ramonruanxc/delphi-fiber-runtime.git
 cd delphi-fiber-runtime
 python scripts/build_example.py
 ```
