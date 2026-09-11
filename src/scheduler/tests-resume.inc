@@ -12,6 +12,9 @@ begin
     Jumped := True;
     Inc(Generation);
     Inc(Clock, 10);
+    { Model carrier preemption without advancing virtual time. The condition
+      pump must have a wall-clock safety budget independent of this scenario. }
+    Sleep(20);
   end
   else
     Clock := DeadlineUs;
@@ -47,7 +50,9 @@ begin
   S := TFiberScheduler.Create(2, D);
   Ordinary := S.Spawn(ResumeOrdinary, nil);
   S.Spawn(ResumeAware, nil);
-  Check(S.RunUntilCondition(HasOneStep, nil, 200), 'SCHEDULER_CONDITION_SETTLED');
+  { RunUntilCondition also enforces a real cleanup timeout. Give host preemption
+    room; the exact virtual clock and task-retention checks remain below. }
+  Check(S.RunUntilCondition(HasOneStep, nil, 2000000), 'SCHEDULER_CONDITION_SETTLED');
   Check((D.Clock = 10) and (Ordinary.State = fsSuspended), 'SCHEDULER_CONDITION_RETENTION');
   Check(S.RunUntil(200) and (Steps = 2), 'SCHEDULER_RESUME_FINAL');
   Trace := Ordinary.Trace;
