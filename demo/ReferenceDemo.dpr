@@ -136,7 +136,7 @@ begin
 end;
 
 procedure FiberEvent(Task: TScheduledTask; Source: TServiceEndpoint;
-const Payload: IInterface; Data: Pointer);
+  const Payload: IInterface; Data: Pointer);
 begin
   Receiver.Consume(Payload as IEventPayload);
 end;

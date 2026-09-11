@@ -9,6 +9,7 @@ var
   Host: TServiceHost;
   Service: THostRun;
   Timer: TPlatformTimer;
+  CompletionDeadlineUs: Int64;
   I, J, Disposed: Integer;
   Sample: TSample;
   Payload: TPayload;
@@ -148,10 +149,27 @@ begin
   end;
   if Mode = 'fibers' then
   begin
-    Scheduler.RunUntil(EndUs + 1000);
+    {$IFDEF REFERENCE_TEST_COMPLETION_GRACE}
+    { Model owner preemption after measured work but before producers can
+      resume and observe the end of their measurement window. }
+    Scheduler.RunUntil(EndUs - 2000);
+    Timer.WaitUntil(EndUs + 20000);
+    {$ENDIF}
+    { EndUs still bounds measured work. Give every producer one shared budget
+      to resume and exit; a persistent subscriber must not consume that budget
+      after the producers have completed. }
+    CompletionDeadlineUs := EndUs + 1000000;
     for I := 0 to Services - 1 do
+    begin
+      if not Scheduler.RunTaskUntil(Tasks[I], CompletionDeadlineUs) then
+        raise Exception.CreateFmt(
+          'Fiber comparison completion timeout: task=%d state=%d ErrorClass=%s ErrorMessage=%s',
+          [I, Ord(Tasks[I].State), Tasks[I].ErrorClass, Tasks[I].ErrorMessage]);
       if Tasks[I].State <> fsCompleted then
-        raise Exception.Create('Fiber comparison callback failed');
+        raise Exception.CreateFmt(
+          'Fiber comparison callback failed: task=%d state=%d ErrorClass=%s ErrorMessage=%s',
+          [I, Ord(Tasks[I].State), Tasks[I].ErrorClass, Tasks[I].ErrorMessage]);
+    end;
     if Events <> 0 then
     begin
       for I := 0 to Services - 1 do
