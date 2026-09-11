@@ -20,11 +20,28 @@ From a consumer project with Boss installed:
 boss install github.com/ramonruanxc/delphi-fiber-runtime
 ```
 
-To select the documented release explicitly:
+To select the documented release explicitly, add or update this entry in your
+consumer's `boss.json` `dependencies` object. Merge it with existing dependencies
+and retain all other consumer fields; do not replace the entire file with this
+fragment:
+
+```json
+{
+  "dependencies": {
+    "github.com/ramonruanxc/delphi-fiber-runtime": "0.3.1-prototype.1"
+  }
+}
+```
+
+Then install from the manifest:
 
 ```sh
-boss install github.com/ramonruanxc/delphi-fiber-runtime@v0.3.1-prototype.1
+boss install
 ```
+
+Use this manifest form for the prerelease version. Boss 3.0.17's command-line
+version parser does not accept the full `@v0.3.1-prototype.1` tag syntax and may
+finish without adding the dependency.
 
 Boss 3.0.17 uses this layout:
 

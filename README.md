@@ -61,8 +61,19 @@ With [Boss](https://github.com/HashLoad/boss), run this in your consumer project
 boss install github.com/ramonruanxc/delphi-fiber-runtime
 ```
 
-For a reproducible version, use
-`boss install github.com/ramonruanxc/delphi-fiber-runtime@v0.3.1-prototype.1`.
+To pin the documented version, merge this entry into your consumer's
+`boss.json` `dependencies` object, preserving its other dependencies and fields:
+
+```json
+{
+  "dependencies": {
+    "github.com/ramonruanxc/delphi-fiber-runtime": "0.3.1-prototype.1"
+  }
+}
+```
+
+Then run `boss install`. Use the manifest for this prerelease version:
+Boss 3.0.17's command-line version parser does not accept its full tag syntax.
 Boss 3.0.17 installs it under
 `modules/github_com_ramonruanxc_delphi-fiber-runtime/`. Add that directory's
 `src/` to the FPC unit search path and keep its backend subdirectories.
