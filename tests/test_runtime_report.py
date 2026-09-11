@@ -10,15 +10,17 @@ def sample():
     return dict(format='runtime-demo-v2', period_us=1000, planned_cycles=3,
                 services=1, sent=2, received=2, rejected=0, stopped=True,
                 carrier_threads=1, warmup_us=10000,
-                runs=[dict(epoch_us=100, samples=[
-                    dict(index=1, deadline_us=1100, start_us=1105, finish_us=1150, generation=0, finish_generation=0, epoch_us=100, wait_deadline_us=1100, timer_observed_us=1101, ready_enqueued_us=1102, resumed_us=1103, ready_reason="timer", ready_generation=0, resume_generation=0),
-                    dict(index=3, deadline_us=3100, start_us=3105, finish_us=3150, generation=0, finish_generation=0, epoch_us=100, wait_deadline_us=3100, timer_observed_us=3101, ready_enqueued_us=3102, resumed_us=3103, ready_reason="timer", ready_generation=0, resume_generation=0)])])
+                runs=[dict(epoch_us=100, segments=dict(discontinuity_count=0, crossing_count=0,
+                    last=None, current=dict(generation=0, epoch_us=100, ended_us=4000, started=2, skipped=1)), samples=[
+                    dict(segment=0, index=1, deadline_us=1100, start_us=1105, finish_us=1150, generation=0, finish_generation=0, epoch_us=100, wait_deadline_us=1100, timer_observed_us=1101, ready_enqueued_us=1102, resumed_us=1103, ready_reason="timer", ready_generation=0, resume_generation=0),
+                    dict(segment=0, index=3, deadline_us=3100, start_us=3105, finish_us=3150, generation=0, finish_generation=0, epoch_us=100, wait_deadline_us=3100, timer_observed_us=3101, ready_enqueued_us=3102, resumed_us=3103, ready_reason="timer", ready_generation=0, resume_generation=0)])])
 
 
 class RuntimeReportTests(unittest.TestCase):
     def test_empty_trace_is_descriptive_but_cannot_certify_execution(self):
         data = sample()
         data['runs'][0]['samples'] = []
+        data['runs'][0]['segments']['current']['started'] = 0
         data['sent'] = data['received'] = 0
         self.assertEqual(analyze(data)['skipped_activations'], 3)
         with self.assertRaises(ValueError):
@@ -56,7 +58,7 @@ class RuntimeReportTests(unittest.TestCase):
 
     def test_discontinuous_invocation_excluded_from_normal_distributions(self):
         data = sample()
-        data['runs'][0]['samples'][0]['finish_generation'] = 1
+        data['runs'][0]['samples'][-1]['finish_generation'] = 1
         result = analyze(data)
         self.assertEqual(result['started_activations'], 2)
         self.assertEqual(result['excluded_discontinuous_activations'], 1)
@@ -65,8 +67,11 @@ class RuntimeReportTests(unittest.TestCase):
 
     def test_rebase_records_segments_without_cross_segment_intervals(self):
         data = sample()
-        data['runs'][0]['samples'][1].update(index=1, epoch_us=2100, generation=1,
-            finish_generation=1, ready_generation=1, resume_generation=1)
+        data['runs'][0]['samples'][1].update(segment=1, index=1, epoch_us=2100, generation=3,
+            finish_generation=3, ready_generation=3, resume_generation=3)
+        data['runs'][0]['segments'] = dict(discontinuity_count=1, crossing_count=0,
+            last=dict(generation=0, epoch_us=100, ended_us=2100, started=1, skipped=1),
+            current=dict(generation=1, epoch_us=2100, ended_us=4000, started=1, skipped=0))
         result = analyze(data)
         self.assertEqual(result['discontinuities'][0]['old_epoch_us'], 100)
         self.assertEqual(result['discontinuities'][0]['new_epoch_us'], 2100)
@@ -92,6 +97,32 @@ class RuntimeReportTests(unittest.TestCase):
         result = analyze(data)
         self.assertEqual(result['service_segments'][0]['discontinuity_count'], 1)
         self.assertIsNone(result['planned_activations'])
+
+    def test_rejects_callback_before_previous_finish_generation(self):
+        data = sample()
+        data['runs'][0]['samples'][0]['finish_generation'] = 1
+        with self.assertRaises(ValueError):
+            analyze(data)
+
+    def test_rejects_missing_or_contradictory_segment_snapshots(self):
+        for change in ('missing', 'epoch', 'count', 'row_segment', 'missing_row_segment'):
+            data = sample()
+            run = data['runs'][0]
+            if change == 'missing': del run['segments']
+            elif change == 'epoch': run['segments']['current']['epoch_us'] = 999999
+            elif change == 'count': run['segments']['current']['started'] = 0
+            elif change == 'row_segment': run['samples'][1]['segment'] = 1
+            else: del run['samples'][0]['segment']
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                analyze(data)
+
+    def test_rejects_backwards_local_segment_even_if_clock_generation_grows(self):
+        data = sample()
+        data['runs'][0]['samples'][0]['segment'] = 1
+        data['runs'][0]['samples'][1].update(generation=1, finish_generation=1,
+            ready_generation=1, resume_generation=1)
+        with self.assertRaises(ValueError):
+            analyze(data)
 
     def test_rejects_loss_and_false_shutdown(self):
         for key, value in [('received', 1), ('stopped', False), ('services', 2), ('sent', True)]:

@@ -37,6 +37,15 @@ class ReferenceTests(unittest.TestCase):
             with self.subTest(change=change), self.assertRaises(ValueError):
                 report(data)
 
+    def test_cpu_budget_starts_after_publication(self):
+        data = self.data()
+        data['work_us'] = 100
+        row = data['runs'][0]['samples'][0]
+        row.update(work_start_us=1200, finish_us=1250)
+        with self.assertRaises(ValueError): report(data)
+        row['finish_us'] = 1300
+        self.assertEqual(report(data)['started_activations'], 1)
+
     def test_rejects_bool_index_as_numeric_identity(self):
         data = self.data()
         data['runs'][0]['samples'][0]['index'] = True

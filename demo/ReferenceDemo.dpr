@@ -6,7 +6,7 @@ uses
   ServiceHost.Service, ServiceHost.Host, ServiceHost.Bus, ServiceHost.Events,
   FiberRuntime.Platform, FiberRuntime.Schedule, FiberRuntime.Context, FiberRuntime.Scheduler, FiberRuntime.Service, FiberRuntime.EventHub;
 type
-  TSample = record Index, DueUs, StartUs, FinishUs: Int64; end;
+  TSample = record Index, DueUs, StartUs, WorkStartUs, FinishUs: Int64; end;
   TPayload = class(TInterfacedObject, IEventPayload)
     Text: string;
     function Describe: string;
@@ -110,7 +110,8 @@ begin
         InterlockedIncrement(Accepted) else InterlockedIncrement(Rejected);
     end;
   end;
-  if WorkUs > 0 then while Timer.NowUs - AStartUs < WorkUs do;
+  Samples[Count].WorkStartUs := Timer.NowUs;
+  if WorkUs > 0 then while Timer.NowUs - Samples[Count].WorkStartUs < WorkUs do;
   Samples[Count].FinishUs := Timer.NowUs;
   Inc(Count);
 end;
@@ -255,13 +256,17 @@ begin
       if not Bus.WaitDrained(5000) then raise Exception.Create('Reference event bus drain timeout');
       Disposed := Bus.Discarded;
     end;
-    if (Accepted <> Receiver.Delivered + Disposed) or (Receiver.Faults <> 0) then
-      raise Exception.Create('Accepted event delivery/disposal mismatch');
   end;
   { No receiver or payload is released until all executing delivery threads join. }
   Host.Free; Host := nil;
   if (Mode = 'workers') and (Bus <> nil) then Bus.Free;
   Bus := nil; EventPool.Free; EventPool := nil; Pool.Free; Pool := nil;
+  for I := 0 to Services - 1 do begin Workers[I].Free; Workers[I] := nil; end;
+  { WaitDrained and finite Worker.WaitFor exclude native thread tails. The
+    destructors above perform actual joins before final counters/MM restore. }
+  if Events <> 0 then
+    if (Accepted <> Receiver.Delivered + Disposed) or (Receiver.Faults <> 0) then
+      raise Exception.Create('Accepted event delivery/disposal mismatch');
   StopAllocationProbe;
   Write('{"format":"reference-bench-v1","mode":"', Mode,
     '","services":', Services, ',"workers":', WorkerCount,
@@ -280,7 +285,8 @@ begin
     for J := 0 to Runs[I].Count - 1 do begin
       if J > 0 then Write(','); Sample := Runs[I].Samples[J];
       Write('{"index":', Sample.Index, ',"deadline_us":', Sample.DueUs,
-        ',"start_us":', Sample.StartUs, ',"finish_us":', Sample.FinishUs, '}');
+        ',"start_us":', Sample.StartUs, ',"work_start_us":', Sample.WorkStartUs,
+        ',"finish_us":', Sample.FinishUs, '}');
     end;
     Write(']}');
   end;
@@ -288,7 +294,7 @@ begin
   for I := 0 to Services - 1 do Runs[I].Owner.Free;
   Recipient.Free; Hub.Free; Hub := nil; Scheduler.Free;
   Receiver.Free;
-  for I := 0 to Services - 1 do begin Workers[I].Free; Keep[I] := nil; end;
+  for I := 0 to Services - 1 do Keep[I] := nil;
   Timer.Free;
 end;
 begin

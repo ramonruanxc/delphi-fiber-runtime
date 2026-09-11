@@ -84,6 +84,7 @@ def analyze(data):
         epoch = integer(service['epoch_us'])
         previous_index, previous_start, previous_finish, previous_generation = 0, None, epoch, None
         previous_clean = False
+        previous_finish_generation, previous_segment = 0, None
         for row in service['samples']:
             index = integer(row['index'], 1)
             due, start, finish = [integer(row[key]) for key in ('deadline_us', 'start_us', 'finish_us')]
@@ -92,14 +93,17 @@ def analyze(data):
             if end_generation < generation:
                 raise ValueError('generation moved backward')
             current_epoch = integer(row.get('epoch_us', epoch))
-            if previous_generation is not None and generation < previous_generation:
+            if generation < previous_finish_generation:
                 raise ValueError('generation moved backward')
-            if previous_generation is not None and generation != previous_generation:
+            segment = integer(row.get('segment')) if traced else generation
+            if previous_segment is not None and segment < previous_segment:
+                raise ValueError('service segment moved backward')
+            if previous_segment is not None and segment != previous_segment:
                 discontinuities.append(dict(old_generation=previous_generation, new_generation=generation,
                                             old_epoch_us=epoch, new_epoch_us=current_epoch))
                 previous_index, previous_start = 0, None
             elif current_epoch != epoch:
-                raise ValueError('epoch changed without generation transition')
+                raise ValueError('epoch changed without service segment transition')
             epoch = current_epoch
             if not previous_index < index <= cycles or due != epoch + index * period:
                 raise ValueError('invalid index or fixed-rate phase')
@@ -126,11 +130,14 @@ def analyze(data):
                 excluded += 1
             previous_index, previous_start, previous_finish = index, start, finish
             previous_generation, previous_clean = generation, clean
+            previous_finish_generation, previous_segment = end_generation, segment
     if sent + rejected != started:
         raise ValueError('each recorded activation must account for one event')
     service_segments = []
     for service in data['runs']:
         if 'segments' not in service:
+            if traced:
+                raise ValueError('runtime v2 requires final service segment snapshots')
             continue
         metadata = service['segments']
         total, crossings = integer(metadata['discontinuity_count']), integer(metadata['crossing_count'])
@@ -147,6 +154,31 @@ def analyze(data):
                 raise ValueError('invalid last/current segment boundary')
         elif last is not None:
             raise ValueError('unexpected previous segment')
+        rows = service['samples']
+        if traced:
+            snapshots = {current['generation']: current}
+            if last is not None:
+                snapshots[last['generation']] = last
+            recorded = {}
+            crossing_rows = 0
+            for row in rows:
+                segment = integer(row.get('segment'))
+                if segment > total:
+                    raise ValueError('invocation segment exceeds final service segment')
+                recorded[segment] = recorded.get(segment, 0) + 1
+                if segment in snapshots and row['epoch_us'] != snapshots[segment]['epoch_us']:
+                    raise ValueError('invocation epoch contradicts represented segment')
+                if row['finish_generation'] > row['generation']:
+                    crossing_rows += 1
+            for segment, snapshot in snapshots.items():
+                if snapshot['started'] < recorded.get(segment, 0):
+                    raise ValueError('snapshot has fewer starts than recorded invocations')
+            # A final cancelled invocation unwinds without Service.CompleteAndRebase;
+            # its cross-generation finish is valid even though CrossingCount stays unchanged.
+            terminal_crossing = bool(rows and rows[-1]['segment'] == total and
+                                     rows[-1]['finish_generation'] > rows[-1]['generation'])
+            if crossings < crossing_rows - int(terminal_crossing):
+                raise ValueError('completed crossing invocations missing from service counters')
         service_segments.append(metadata)
     segmented = bool(discontinuities or excluded or any(s['discontinuity_count'] for s in service_segments))
     result = dict(format='runtime-report-v2' if traced else 'runtime-report-v1', qualification='descriptive',

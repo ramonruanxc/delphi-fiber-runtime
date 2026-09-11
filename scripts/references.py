@@ -37,6 +37,13 @@ def report(data):
     if len(data['runs']) != count:
         raise ValueError('service count mismatch')
     started = sum(len(r['samples']) for r in data['runs'])
+    work_us = integer(data.get('work_us', 0))
+    if 'work_us' in data:
+        for run in data['runs']:
+            for sample in run['samples']:
+                work_start = integer(sample.get('work_start_us'))
+                if not integer(sample['start_us']) <= work_start <= integer(sample['finish_us']) - work_us:
+                    raise ValueError('controlled CPU budget did not begin after publication')
     if data['mode'] != 'host':
         result = analyze(dict({k: v for k, v in data.items() if k != 'allocation_api_calls'}, format='runtime-demo-v1', carrier_threads=1, stopped=True,
                               sent=started, received=started, rejected=0))
@@ -105,6 +112,16 @@ def collect(build, benchmark, compiler, root, out, flags):
                 result['resources'] = resources
                 (out / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
                 results[name] = result
+    # Queue-empty is not dispatcher-idle in the pinned bus: preserve this join regression.
+    slow = subprocess.run([str(binary), 'workers', '--services', '1', '--cycles', '20',
+                           '--events', '1', '--callback-us', '100000'],
+                          capture_output=True, text=True, timeout=15)
+    (out / 'reference-slow-handler.raw.json').write_text(slow.stdout, encoding='utf-8')
+    if slow.returncode != 0:
+        raise RuntimeError('Reference slow-handler shutdown failed: ' + slow.stderr)
+    slow_report = report(json.loads(slow.stdout))
+    if slow_report['events']['accepted'] < 1 or slow_report['events']['delivered'] != slow_report['events']['accepted']:
+        raise ValueError('Reference slow-handler shutdown did not complete accepted delivery')
     negative = build(compiler, 'demo/ReferenceDemo.dpr', out / 'REFERENCE_PROVE_HOST_FAULT',
                      ['REFERENCE_PROVE_HOST_FAULT'], [*flags, *['-Fu' + str(path) for path in sources]])
     result = subprocess.run([str(negative), 'host', '--services', '1', '--cycles', '20'],
