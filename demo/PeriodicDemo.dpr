@@ -1,10 +1,17 @@
 program PeriodicDemo;
 
-{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
 {$APPTYPE CONSOLE}
 
 uses
-  {$IFDEF FPC}{$IFDEF UNIX}cthreads,{$ENDIF}{$ENDIF}
+  {$IFDEF FPC}
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
+  {$ENDIF}
   SysUtils,
   FiberRuntime.Schedule in '../src/FiberRuntime.Schedule.pas',
   FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas';
@@ -16,7 +23,8 @@ type
   end;
 
 function Option(const AName: string; ADefault: Int64): Int64;
-var I: Integer;
+var
+  I: Integer;
 begin
   Result := ADefault;
   for I := 1 to ParamCount do
@@ -41,8 +49,9 @@ begin
   PeriodUs := Option('--period-us', 1000);
   WorkUs := Option('--work-us', 0);
   if (Cycles < 1) or (Cycles > 1000000) or (PeriodUs < 1) or
-     (PeriodUs > 1000000) or (WorkUs < 0) or (WorkUs > 1000000) then
-    raise Exception.Create('Options out of range: cycles 1..1000000, period-us 1..1000000, work-us 0..1000000');
+    (PeriodUs > 1000000) or (WorkUs < 0) or (WorkUs > 1000000) then
+    raise Exception.Create(
+      'Options out of range: cycles 1..1000000, period-us 1..1000000, work-us 0..1000000');
   SetLength(Samples, Integer(Cycles));
   Timer := TPlatformTimer.Create;
   try
@@ -58,12 +67,13 @@ begin
         if not Timer.WaitUntil(Schedule.NextDeadlineUs) then
           raise Exception.Create('Unexpected benchmark cancellation');
         NowUs := Timer.NowUs;
-        if NowUs >= EndUs then Break;
+        if NowUs >= EndUs then
+          Break;
         if Schedule.TryAcquire(NowUs, Tick) then
         begin
           { Deliberate synthetic CPU workload; never used to poll for a timer. }
           if WorkUs > 0 then
-            while Timer.NowUs - NowUs < WorkUs do;
+            while Timer.NowUs - NowUs < WorkUs do ;
           FinishUs := Timer.NowUs;
           Samples[Count].Tick := Tick;
           Samples[Count].FinishUs := FinishUs;

@@ -1,18 +1,35 @@
 program ContextDemo;
-{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
 {$APPTYPE CONSOLE}
+
 uses
-  {$IFDEF UNIX}cthreads,{$ENDIF}
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
   SysUtils,
   FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
   FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas';
 
-const TaskCount = 16; YieldsPerTask = 1000; StackBytes = 262144;
-type TWork = record YieldCount: Integer; LocalTag: Pointer; end;
-     PWork = ^TWork;
+const
+  TaskCount = 16;
+  YieldsPerTask = 1000;
+  StackBytes = 262144;
+
+type
+  TWork = record
+    YieldCount: Integer;
+    LocalTag: Pointer;
+  end;
+  PWork = ^TWork;
 
 procedure Work(ATask: TFiberTask; AData: Pointer);
-var I: Integer; Context: PWork; Saved: PtrUInt;
+var
+  I: Integer;
+  Context: PWork;
+  Saved: PtrUInt;
 begin
   Context := PWork(AData);
   Saved := PtrUInt(Context^.LocalTag) * 17;
@@ -21,7 +38,7 @@ begin
     Inc(Context^.YieldCount);
     ATask.Yield;
     if (ATask.LocalValue <> Context^.LocalTag) or
-       (Saved <> PtrUInt(Context^.LocalTag) * 17) then
+      (Saved <> PtrUInt(Context^.LocalTag) * 17) then
       raise Exception.Create('Task-local or stack state corrupted');
   end;
 end;
@@ -36,33 +53,38 @@ begin
 end;
 
 procedure Run;
-var Runtime: TFiberRuntime; Timer: TPlatformTimer;
-    Tasks: array[0..TaskCount-1] of TFiberTask;
-    Data: array[0..TaskCount-1] of TWork;
-    I, Round, Completed, Yielded, CancelCleanups: Integer; Started, Elapsed: Int64;
-    CancelTask: TFiberTask;
+var
+  Runtime: TFiberRuntime;
+  Timer: TPlatformTimer;
+  Tasks: array[0..TaskCount - 1] of TFiberTask;
+  Data: array[0..TaskCount - 1] of TWork;
+  I, Round, Completed, Yielded, CancelCleanups: Integer;
+  Started, Elapsed: Int64;
+  CancelTask: TFiberTask;
 begin
   FillChar(Tasks, SizeOf(Tasks), 0);
   FillChar(Data, SizeOf(Data), 0);
   Runtime := TFiberRuntime.Create;
   Timer := TPlatformTimer.Create;
-  for I := 0 to TaskCount-1 do
+  for I := 0 to TaskCount - 1 do
   begin
-    Data[I].LocalTag := Pointer(PtrUInt(I+1));
+    Data[I].LocalTag := Pointer(PtrUInt(I + 1));
     Tasks[I] := Runtime.CreateTask(Work, @Data[I], StackBytes);
     Tasks[I].LocalValue := Data[I].LocalTag;
   end;
   Started := Timer.NowUs;
   for Round := 0 to YieldsPerTask do
-    for I := 0 to TaskCount-1 do
+    for I := 0 to TaskCount - 1 do
     begin
       Tasks[I].Resume;
       if Tasks[I].State in [fsFaulted, fsCancelled] then
-        raise Exception.Create('Task failed: ' + Tasks[I].ErrorClass + ': ' + Tasks[I].ErrorMessage);
+        raise Exception.Create('Task failed: ' + Tasks[I].ErrorClass + ': ' +
+          Tasks[I].ErrorMessage);
     end;
   Elapsed := Timer.NowUs - Started;
-  Completed := 0; Yielded := 0;
-  for I := 0 to TaskCount-1 do
+  Completed := 0;
+  Yielded := 0;
+  for I := 0 to TaskCount - 1 do
   begin
     if Tasks[I].State <> fsCompleted then
       raise Exception.Create('Task failed: ' + Tasks[I].ErrorClass + ': ' + Tasks[I].ErrorMessage);
@@ -81,7 +103,7 @@ begin
   CancelTask.Free;
   WriteLn('{"format":"context-demo-v1","backend":"', Runtime.BackendName,
     '","tasks":', TaskCount, ',"completed":', Completed, ',"yields":', Yielded,
-    ',"resume_calls":', TaskCount*(YieldsPerTask+1), ',"elapsed_us":', Elapsed,
+    ',"resume_calls":', TaskCount * (YieldsPerTask + 1), ',"elapsed_us":', Elapsed,
     ',"requested_stack_bytes_per_task":', StackBytes,
     ',"carrier_threads":1,"cancelled":1,"cancel_cleanup_count":', CancelCleanups, '}');
   Timer.Free;

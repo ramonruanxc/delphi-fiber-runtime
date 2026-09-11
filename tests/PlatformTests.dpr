@@ -1,10 +1,23 @@
 program PlatformTests;
-{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
-{$IFDEF MSWINDOWS}{$APPTYPE CONSOLE}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
+{$IFDEF MSWINDOWS}
+{$APPTYPE CONSOLE}
+{$ENDIF}
+
 uses
-  {$IFDEF UNIX}cthreads,{$ENDIF}
-  {$IFDEF MSWINDOWS}Windows,{$ENDIF}
-  SysUtils, Classes, FiberRuntime.Platform;
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
+  {$IFDEF MSWINDOWS}
+  Windows,
+  {$ENDIF}
+  SysUtils,
+  Classes,
+  FiberRuntime.Platform;
+
 type
   TCancelThread = class(TThread)
   private
@@ -15,10 +28,13 @@ type
     ErrorText: string;
     constructor Create(ATimer: TPlatformTimer);
   end;
+
 procedure Check(ACondition: Boolean; const AName: string);
 begin
-  if not ACondition then raise Exception.Create('FAIL: ' + AName);
+  if not ACondition then
+    raise Exception.Create('FAIL: ' + AName);
 end;
+
 constructor TCancelThread.Create(ATimer: TPlatformTimer);
 begin
   inherited Create(True);
@@ -26,8 +42,10 @@ begin
   FTimer := ATimer;
   Start;
 end;
+
 procedure TCancelThread.Execute;
-var Delay: TPlatformTimer;
+var
+  Delay: TPlatformTimer;
 begin
   try
     Delay := TPlatformTimer.Create;
@@ -39,11 +57,16 @@ begin
       Delay.Free;
     end;
   except
-    on E: Exception do ErrorText := E.Message;
+    on E: Exception do
+      ErrorText := E.Message;
   end;
 end;
+
 procedure TestClockAndDeadlines;
-var Timer: TPlatformTimer; I: Integer; Previous, Current, Deadline: Int64;
+var
+  Timer: TPlatformTimer;
+  I: Integer;
+  Previous, Current, Deadline: Int64;
 begin
   Timer := TPlatformTimer.Create;
   try
@@ -69,8 +92,11 @@ begin
     Timer.Free;
   end;
 end;
+
 procedure TestStickyCancellation;
-var Timer: TPlatformTimer; I: Integer;
+var
+  Timer: TPlatformTimer;
+  I: Integer;
 begin
   Timer := TPlatformTimer.Create;
   try
@@ -85,8 +111,12 @@ begin
     Timer.Free;
   end;
 end;
+
 procedure TestConcurrentCancellation;
-var Timer: TPlatformTimer; Worker: TCancelThread; Deadline: Int64;
+var
+  Timer: TPlatformTimer;
+  Worker: TCancelThread;
+  Deadline: Int64;
 begin
   Timer := TPlatformTimer.Create;
   try
@@ -108,17 +138,20 @@ begin
 end;
 {$IFDEF MSWINDOWS}
 function ProcessHandleCount(Process: THandle; var Count: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'GetProcessHandleCount';
+stdcall; external 'kernel32.dll' name 'GetProcessHandleCount';
 {$ENDIF}
 function OpenResourceCount: Integer;
 {$IFDEF MSWINDOWS}
-var Count: DWORD;
+var
+  Count: DWORD;
 begin
-  if not ProcessHandleCount(GetCurrentProcess, Count) then RaiseLastOSError;
+  if not ProcessHandleCount(GetCurrentProcess, Count) then
+    RaiseLastOSError;
   Result := Count;
 end;
 {$ELSE}
-var Search: TSearchRec;
+var
+  Search: TSearchRec;
 begin
   Result := 0;
   {$IFDEF LINUX}
@@ -129,15 +162,19 @@ begin
     raise Exception.Create('Cannot inspect open descriptors');
   try
     repeat
-      if (Search.Name <> '.') and (Search.Name <> '..') then Inc(Result);
+      if (Search.Name <> '.') and (Search.Name <> '..') then
+        Inc(Result);
     until FindNext(Search) <> 0;
   finally
     FindClose(Search);
   end;
 end;
 {$ENDIF}
+
 procedure TestResourceChurn;
-var Timer: TPlatformTimer; I, BeforeCount: Integer;
+var
+  Timer: TPlatformTimer;
+  I, BeforeCount: Integer;
 begin
   BeforeCount := OpenResourceCount;
   for I := 1 to 500 do
@@ -153,6 +190,7 @@ begin
   end;
   Check(OpenResourceCount = BeforeCount, 'native resources released after churn');
 end;
+
 begin
   try
     TestClockAndDeadlines;

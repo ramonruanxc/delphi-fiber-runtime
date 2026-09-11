@@ -1,6 +1,9 @@
 unit FiberRuntime.Schedule;
 
-{$IFDEF FPC}{$MODE DELPHI}{$ENDIF}
+
+{$IFDEF FPC}
+{$MODE DELPHI}
+{$ENDIF}
 
 interface
 
@@ -8,6 +11,7 @@ type
   TPeriodicSegment = record
     Generation, EpochUs, EndedUs, StartedCount, SkippedCount: Int64;
   end;
+
   TPeriodicTick = record
     Segment: Int64;
     Index: Int64;
@@ -45,7 +49,8 @@ type
 
 implementation
 
-uses SysUtils;
+uses
+  SysUtils;
 
 function AddNonnegative(A, B: Int64): Int64;
 begin
@@ -63,7 +68,8 @@ begin
   FPeriodUs := APeriodUs;
   FIndex := 1;
   FDeadlineUs := DeadlineFor(FIndex);
-  FLastObservedUs := AEpochUs; FLastSegment.Generation := -1;
+  FLastObservedUs := AEpochUs;
+  FLastSegment.Generation := -1;
 end;
 
 procedure TPeriodicSchedule.ValidateTime(ANowUs: Int64);
@@ -81,7 +87,8 @@ end;
 
 function TPeriodicSchedule.TryAcquire(ANowUs: Int64;
   out ATick: TPeriodicTick): Boolean;
-var DueIndex, NewSkipped, NewStarted, NewDeadline: Int64;
+var
+  DueIndex, NewSkipped, NewStarted, NewDeadline: Int64;
 begin
   ValidateTime(ANowUs);
   Result := False;
@@ -116,7 +123,8 @@ begin
 end;
 
 procedure TPeriodicSchedule.Complete(ANowUs: Int64);
-var DueIndex, NewIndex, NewDeadline, NewSkipped: Int64;
+var
+  DueIndex, NewIndex, NewDeadline, NewSkipped: Int64;
 begin
   if not FActive then
     raise Exception.Create('Complete requires an active invocation');
@@ -136,48 +144,91 @@ begin
 end;
 
 procedure TPeriodicSchedule.ApplyRebase(ANewEpochUs: Int64; CompleteActive: Boolean);
-var Next, Generation: Int64; Previous: TPeriodicSegment;
+var
+  Next, Generation: Int64;
+  Previous: TPeriodicSegment;
 begin
   if FActive <> CompleteActive then
     raise Exception.Create('Rebase requires idle state; CompleteAndRebase requires active state');
   ValidateTime(ANewEpochUs);
   Next := AddNonnegative(ANewEpochUs, FPeriodUs);
   Generation := AddNonnegative(FDiscontinuities, 1);
-  Previous := CurrentSegment; Previous.EndedUs := ANewEpochUs;
+  Previous := CurrentSegment;
+  Previous.EndedUs := ANewEpochUs;
   { Commit after every check. Elapsed discontinuity cycles are not normal skips. }
-  FLastSegment := Previous; FDiscontinuities := Generation;
-  FSegmentStarted := FStarted; FSegmentSkipped := FSkipped;
-  FEpochUs := ANewEpochUs; FIndex := 1; FDeadlineUs := Next;
-  FLastObservedUs := ANewEpochUs; FActive := False;
+  FLastSegment := Previous;
+  FDiscontinuities := Generation;
+  FSegmentStarted := FStarted;
+  FSegmentSkipped := FSkipped;
+  FEpochUs := ANewEpochUs;
+  FIndex := 1;
+  FDeadlineUs := Next;
+  FLastObservedUs := ANewEpochUs;
+  FActive := False;
 end;
+
 procedure TPeriodicSchedule.Rebase(ANewEpochUs: Int64);
-begin ApplyRebase(ANewEpochUs, False); end;
+begin
+  ApplyRebase(ANewEpochUs, False);
+end;
+
 procedure TPeriodicSchedule.CompleteAndRebase(ANowUs: Int64);
-begin ApplyRebase(ANowUs, True); end;
+begin
+  ApplyRebase(ANowUs, True);
+end;
+
 function TPeriodicSchedule.EpochUs: Int64;
-begin Result := FEpochUs; end;
+begin
+  Result := FEpochUs;
+end;
+
 function TPeriodicSchedule.DiscontinuityCount: Int64;
-begin Result := FDiscontinuities; end;
+begin
+  Result := FDiscontinuities;
+end;
+
 function TPeriodicSchedule.LastSegment: TPeriodicSegment;
-begin Result := FLastSegment; end;
+begin
+  Result := FLastSegment;
+end;
+
 function TPeriodicSchedule.CurrentSegment: TPeriodicSegment;
 begin
-  Result.Generation := FDiscontinuities; Result.EpochUs := FEpochUs;
+  Result.Generation := FDiscontinuities;
+  Result.EpochUs := FEpochUs;
   Result.EndedUs := FLastObservedUs;
   Result.StartedCount := FStarted - FSegmentStarted;
   Result.SkippedCount := FSkipped - FSegmentSkipped;
 end;
+
 procedure TPeriodicSchedule.Cancel;
-begin FCancelled := True end;
+begin
+  FCancelled := True
+end;
+
 function TPeriodicSchedule.NextDeadlineUs: Int64;
-begin Result := FDeadlineUs end;
+begin
+  Result := FDeadlineUs
+end;
+
 function TPeriodicSchedule.StartedCount: Int64;
-begin Result := FStarted end;
+begin
+  Result := FStarted
+end;
+
 function TPeriodicSchedule.SkippedCount: Int64;
-begin Result := FSkipped end;
+begin
+  Result := FSkipped
+end;
+
 function TPeriodicSchedule.IsActive: Boolean;
-begin Result := FActive end;
+begin
+  Result := FActive
+end;
+
 function TPeriodicSchedule.IsCancelled: Boolean;
-begin Result := FCancelled end;
+begin
+  Result := FCancelled
+end;
 
 end.
