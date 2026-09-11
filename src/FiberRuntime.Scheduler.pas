@@ -8,6 +8,8 @@ type
     function NowUs: Int64; virtual; abstract;
     function ClockGeneration: Int64; virtual;
     procedure WaitUntil(DeadlineUs: Int64); virtual; abstract;
+    { Notification only: called under the mailbox lock, possibly by a foreign
+      thread. Must not suspend or call back into this scheduler. }
     procedure Wake; virtual; abstract;
   end;
   TFiberScheduler = class;
@@ -93,6 +95,7 @@ type
     function Post(AProc: TCarrierProc; AData: Pointer): Boolean;
     procedure RequestStop;
     function Stop(ATimeoutUs: Int64): Boolean;
+    function StopTask(ATask: TScheduledTask; ATimeoutUs: Int64): Boolean;
     property CurrentTask: TScheduledTask read GetCurrentTask;
     property PostFaultCount: Int64 read GetPostFaultCount;
     property MaxTasks: Integer read GetMaxTasks;

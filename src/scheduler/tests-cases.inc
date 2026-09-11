@@ -27,6 +27,8 @@ begin
   if R then Inc(Reentries);
   R := False; try S.Free; except on EFiberUsage do R := True; end;
   if R then Inc(Reentries);
+  R := False; try S.StopTask(Parked, 100); except on EFiberUsage do R := True; end;
+  if R then Inc(Reentries);
 end;
 procedure Fair(T: TScheduledTask; Data: Pointer);
 var I: Integer;
@@ -81,6 +83,7 @@ begin
   try S.Spawn(Empty, nil); except on EFiberUsage do Inc(Rejected); end;
   try S.RunUntil(1); except on EFiberUsage do Inc(Rejected); end;
   try S.RunTaskUntil(Task, 1); except on EFiberUsage do Inc(Rejected); end;
+  try S.StopTask(Task, 1); except on EFiberUsage do Inc(Rejected); end;
   try S.Stop(1); except on EFiberUsage do Inc(Rejected); end;
   try S.WakeTask(Task); except on EFiberUsage do Inc(Rejected); end;
   try S.CheckOwner; except on EFiberUsage do Inc(Rejected); end;
@@ -97,7 +100,7 @@ begin
   Parked := S.Spawn(Empty, nil);
   Probe := TOwnerProbe.Create(True); Probe.Task := Parked;
   Probe.Start; Probe.WaitFor;
-  Check(Probe.Rejected = 26, 'SCHEDULER_FOREIGN_OWNER'); Probe.Free;
+  Check(Probe.Rejected = 27, 'SCHEDULER_FOREIGN_OWNER'); Probe.Free;
   R := False; try Parked.Free; except on EFiberUsage do R := True; end;
   Check(R and (Parked.State = fsCreated), 'SCHEDULER_FREE_CREATED');
   R := False; try Parked.Yield; except on EFiberUsage do R := True; end;
@@ -105,7 +108,7 @@ begin
   T := S.Spawn(UsageTask, @Calls); F := S.Spawn(FaultTask, nil);
   Check(S.Post(Reenter, nil), 'SCHEDULER_REENTRY_POST');
   Check(S.RunUntil(100), 'SCHEDULER_USAGE_SETTLES');
-  Check((T.State = fsCompleted) and (Reentries = 6), 'SCHEDULER_REENTRY_GUARD');
+  Check((T.State = fsCompleted) and (Reentries = 8), 'SCHEDULER_REENTRY_GUARD');
   Check((F.State = fsFaulted) and (F.ErrorClass = 'EConvertError') and
     (F.ErrorMessage = 'task fault'), 'SCHEDULER_FAULT_CONTAINMENT');
   R := False; try T.Free; except on EFiberUsage do R := True; end;

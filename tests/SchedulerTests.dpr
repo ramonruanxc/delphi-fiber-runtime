@@ -46,7 +46,9 @@ begin
 end;
 { Test helpers are split to keep every source below 500 lines. }
 {$I ../src/scheduler/tests-cases.inc}
+{$I ../src/scheduler/tests-stop-task.inc}
 begin
   TestVirtual; TestTimersFairness; TestUsage; TestStop; TestPost; TestNativePostRace; TestMailboxFairness; TestTargetAndInvalid; TestClockFault; TestDrainParkRace; TestDriverFailureRetention;
+  TestStopTaskClock; TestStopTaskHealthy; TestStopTaskNewFault; TestPostWakeFailure;
   WriteLn('PASS SchedulerTests');
 end.

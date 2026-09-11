@@ -64,7 +64,13 @@ begin
     FPosts[Index].Proc := AProc; FPosts[Index].Data := AData;
     Inc(FPostCount);
     { Wake under this short lock: destruction cannot overtake accepted publication. }
-    FDriver.Wake;
+    try FDriver.Wake;
+    except
+      { No carrier can consume while this lock is held. Failed notification
+        must not transfer callback responsibility to the scheduler. }
+      Dec(FPostCount); FPosts[Index].Proc := nil; FPosts[Index].Data := nil;
+      raise;
+    end;
     Result := True;
   finally LeaveCriticalSection(FLock); end;
 end;
@@ -93,7 +99,7 @@ begin CheckOwner; Result := FClockFault; end;
 function TFiberScheduler.ClockNow(Cleanup: Boolean): Int64;
 var Generation: Int64;
 begin
-  if Cleanup then
+  if Cleanup and FClockFault then
   begin
     try Result := FDriver.NowUs;
     except on EClockDiscontinuity do Result := FLastNow; end;
@@ -111,7 +117,12 @@ begin
     on E: EClockDiscontinuity do
     begin
       FClockFault := True; RequestStop;
-      raise EFiberUsage.Create('Scheduler clock discontinuity: ' + E.Message);
+      if Cleanup then
+      begin
+        try Result := FDriver.NowUs;
+        except on EClockDiscontinuity do Result := FLastNow; end;
+      end
+      else raise EFiberUsage.Create('Scheduler clock discontinuity: ' + E.Message);
     end;
   end;
 end;
@@ -132,4 +143,16 @@ begin
   RequireCarrier;
   if (ATask = nil) or (ATask.FOwner <> Self) then raise EFiberUsage.Create('Task belongs to another scheduler');
   Result := Pump(ADeadlineUs, ATask, False);
+end;
+function TFiberScheduler.StopTask(ATask: TScheduledTask; ATimeoutUs: Int64): Boolean;
+var Deadline: Int64;
+begin
+  RequireCarrier;
+  if (ATask = nil) or (ATask.FOwner <> Self) then
+    raise EFiberUsage.Create('Task belongs to another scheduler');
+  if ATimeoutUs < 0 then raise EFiberUsage.Create('Duration must be nonnegative');
+  if Terminal(ATask) then Exit(True);
+  Deadline := AddDuration(ClockNow(True), ATimeoutUs);
+  ATask.Cancel;
+  Result := Pump(Deadline, ATask, True);
 end;
