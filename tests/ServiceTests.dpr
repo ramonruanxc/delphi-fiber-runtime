@@ -45,7 +45,7 @@ procedure Setup;
 begin
   Calls := 0; Active := 0; Cleanups := 0; Identity := nil;
   Driver := TFakeDriver.Create;
-  Scheduler := TFiberScheduler.Create(16, Driver);
+  Scheduler := TFiberScheduler.Create(16, Driver, rpStop);
 end;
 procedure Teardown;
 begin
