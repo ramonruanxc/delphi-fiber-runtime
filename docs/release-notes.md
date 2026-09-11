@@ -1,3 +1,10 @@
+Installation documentation correction: Boss 3.0.17 can advance to `main` even
+when its dependency manifest requests a release version. Use the documented
+tagged Git clone or release source ZIP when the exact revision matters. Plain
+Boss installation remains supported and exercised by CI; plain installation is
+verified separately after publication. Exported files are compared with the
+expected commit before compilation.
+
 Repository conventions update: consistent two-space Pascal formatting, an
 expanded usage guide, a runnable service/event QuickStart and a Boss manifest.
 Formatting preserves the original token stream. Boss installation and the

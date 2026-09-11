@@ -105,6 +105,11 @@ The installed package's own build helper then compiles and runs QuickStart,
 including the Unix native helper. Logs, consumer manifests and a binary hash
 are retained under `build/boss-consumer/`. Plain unversioned installation is
 verified separately after publication; it can resolve differently as tags change.
+Boss 3.0.17 also advances a version-constrained installation to `main` when
+that branch moves beyond the tag. A constraint alone is therefore not a
+reproducibility guarantee. The exact-revision check deliberately rejects this
+case, including on reruns of an older release workflow. Use the tagged clone
+or source ZIP instructions in the getting-started guide for a fixed revision.
 
 FPC 3.2.2 context support is an experiment with a narrow RTL adapter. Active
 exception-handler/unwind suspension, allocator/error-hook suspension, asynchronous

@@ -41,14 +41,24 @@ preemption fixture, with no change to production scheduling.
 ## Boss and downloaded release
 
 Boss 3.0.17 is checksum-pinned in the consumer automation. Every release CI host
-installed the tag through Boss, verified its own cache revision and compared
-all 121 exported source files before building and running the installed example.
+requested the tag and obtained its matching revision while tag and `main`
+coincided. Each verified its own cache revision and compared all 121 exported
+source files before building and running the installed example.
 The consumer's parent repository cannot substitute for dependency provenance.
 
-Plain `boss install github.com/ramonruanxc/delphi-fiber-runtime` and the documented
-`0.3.1-prototype.1` dependency constraint in consumer `boss.json` were also
-executed locally against the published revision. Both delivered five messages,
+Plain `boss install github.com/ramonruanxc/delphi-fiber-runtime` and a
+`0.3.1-prototype.1` dependency constraint were initially executed locally while
+the tag and `main` identified the same revision. Both delivered five messages,
 reported zero discarded/aborted deliveries and completed checked shutdown.
+
+After `main` advanced to documentation commit `87bac23`, the constrained
+installation incorrectly retrieved that newer revision instead of `cd66c56`.
+Its cache HEAD and newly installed documentation confirmed the mismatch, and
+the consumer verifier rejected it. Boss 3.0.17 therefore does not qualify as
+a reproducible version pin. The guide now uses a tagged clone or release source
+ZIP for exact revisions; the plain Boss installation remains verified.
+Version `0.3.2-prototype.1` updates package metadata and this installation
+guidance. Its production runtime and verification code match `cd66c56`.
 
 After publication, all five ZIPs and their SHA-256 file were downloaded again.
 The source archive matched all 121 tracked files from the tag. The four native
