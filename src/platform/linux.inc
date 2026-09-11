@@ -1,5 +1,6 @@
 const
   CLOCK_MONOTONIC = 1;
+  CLOCK_BOOTTIME = 7;
   NATIVE_NONBLOCK = $800;
   NATIVE_CLOEXEC = $80000;
   EINTR = 4;
@@ -52,13 +53,14 @@ begin
   if FTimer >= 0 then NativeClose(FTimer);
   if FCancel >= 0 then NativeClose(FCancel);
   if FNotify >= 0 then NativeClose(FNotify);
+  FClockGuard.Free;
   inherited Destroy;
 end;
 
-function TPlatformTimer.NowUs: Int64;
+function ReadClockUs(ClockID: Integer): Int64;
 var Value: TNativeTimespec;
 begin
-  if NativeClockGetTime(CLOCK_MONOTONIC, Value) <> 0 then
+  if NativeClockGetTime(ClockID, Value) <> 0 then
     NativeError('clock_gettime');
   if (Value.Seconds < 0) or (Value.Seconds > High(Int64) div 1000000) or
      (Value.Nanoseconds < 0) or (Value.Nanoseconds >= 1000000000) then
@@ -145,4 +147,22 @@ end;
 function TPlatformTimer.BackendName: string;
 begin
   Result := 'linux-monotonic-timerfd-eventfd';
+end;
+
+function TPlatformTimer.NowUs: Int64;
+begin
+  Result := ReadClockUs(CLOCK_MONOTONIC);
+end;
+
+function TPlatformTimer.SuspendDetectionAvailable: Boolean;
+begin
+  Result := True; { CLOCK_BOOTTIME requires Linux 2.6.39 or newer. }
+end;
+
+procedure TPlatformTimer.ReadSuspendSample(out ABeforeActive, AInclusive,
+  AAfterActive: Int64);
+begin
+  ABeforeActive := ReadClockUs(CLOCK_MONOTONIC);
+  AInclusive := ReadClockUs(CLOCK_BOOTTIME);
+  AAfterActive := ReadClockUs(CLOCK_MONOTONIC);
 end;

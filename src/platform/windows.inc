@@ -1,4 +1,5 @@
 type
+  TQueryPreciseTime = procedure(var Value: UInt64); stdcall;
   TCreateTimerEx = function(Attributes: Pointer; Name: PWideChar;
     Flags, Access: DWORD): THandle; stdcall;
 
@@ -6,6 +7,14 @@ constructor TPlatformTimer.Create;
 var CreateEx: TCreateTimerEx;
 begin
   inherited Create;
+  { Resolve the API set, not kernel32: these exports can live in kernelbase.
+    LOAD_LIBRARY_SEARCH_SYSTEM32 also prevents a local-DLL fallback. }
+  FClockLibrary := LoadLibraryEx('api-ms-win-core-realtime-l1-1-1.dll', 0, $800);
+  if FClockLibrary <> 0 then
+  begin
+    FInterruptTime := GetProcAddress(FClockLibrary, 'QueryInterruptTimePrecise');
+    FUnbiasedTime := GetProcAddress(FClockLibrary, 'QueryUnbiasedInterruptTimePrecise');
+  end;
   if not QueryPerformanceFrequency(FFrequency) or (FFrequency <= 0) then
     raise EOSError.Create('QueryPerformanceFrequency failed');
   FCancel := CreateEvent(nil, True, False, nil);
@@ -28,6 +37,8 @@ begin
   if FTimer <> 0 then CloseHandle(FTimer);
   if FCancel <> 0 then CloseHandle(FCancel);
   if FNotify <> 0 then CloseHandle(FNotify);
+  FClockGuard.Free;
+  if FClockLibrary <> 0 then FreeLibrary(FClockLibrary);
   inherited Destroy;
 end;
 
@@ -97,4 +108,21 @@ function TPlatformTimer.BackendName: string;
 begin
   if FHighResolution then Result := 'windows-qpc-waitable-high-resolution'
   else Result := 'windows-qpc-waitable-standard';
+end;
+
+function TPlatformTimer.SuspendDetectionAvailable: Boolean;
+begin
+  Result := (FInterruptTime <> nil) and (FUnbiasedTime <> nil);
+end;
+
+procedure TPlatformTimer.ReadSuspendSample(out ABeforeActive, AInclusive,
+  AAfterActive: Int64);
+var BeforeTicks, InclusiveTicks, AfterTicks: UInt64;
+begin
+  TQueryPreciseTime(FUnbiasedTime)(BeforeTicks);
+  TQueryPreciseTime(FInterruptTime)(InclusiveTicks);
+  TQueryPreciseTime(FUnbiasedTime)(AfterTicks);
+  ABeforeActive := BeforeTicks div 10;
+  AInclusive := InclusiveTicks div 10;
+  AAfterActive := AfterTicks div 10;
 end;

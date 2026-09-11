@@ -148,6 +148,61 @@ begin
   end;
 end;
 {$ENDIF}
+procedure TestClockIntervals;
+var Guard: TClockContinuityGuard; Timer: TPlatformTimer; I: Integer;
+    Generation: Int64; Raised: Boolean;
+begin
+  Guard := TClockContinuityGuard.Create;
+  try
+    Check(Guard.Observe(10000, 10000, 10001) = 0, 'clock baseline');
+    Check(Guard.Observe(11000, 11000, 11005) = 0, 'paired sample uncertainty');
+    Check(Guard.Observe(12000, 13000, 12000) = 0, 'suspend tolerance boundary');
+    Check(Guard.Observe(13000, 14001, 13000) = 1, 'suspend offset generation');
+    Check(Guard.Observe(14000, 15001, 14000) = 1, 'suspend generation sticky');
+    Check(Guard.Observe(15000, 17002, 15000) = 2, 'second suspension generation');
+    Raised := False;
+    try Guard.Observe(14000, 18000, 14000);
+    except on E: EClockDiscontinuity do Raised := E.Message = 'CLOCK_PAIR_BACKWARD'; end;
+    Check(Raised, 'backward active clock rejected');
+  finally
+    Guard.Free;
+  end;
+  Guard := TClockContinuityGuard.Create;
+  try
+    Raised := False;
+    try Guard.Observe(0, 500, 1001);
+    except on E: EClockDiscontinuity do Raised := E.Message = 'CLOCK_SAMPLE_UNCERTAIN'; end;
+    Check(Raised, 'uncertain sample rejected');
+    Guard.Observe(10000, 20000, 10000);
+    Raised := False;
+    try Guard.Observe(20000, 21000, 20000);
+    except on E: EClockDiscontinuity do Raised := E.Message = 'CLOCK_OFFSET_BACKWARD'; end;
+    Check(Raised, 'backward pair offset rejected');
+  finally
+    Guard.Free;
+  end;
+  Guard := TClockContinuityGuard.Create;
+  try
+    Check(Guard.Observe(0, 0, 0) = 0, 'zero clock baseline');
+    Check(Guard.Observe(100000000, 100000000, 100001000) = 0,
+      'long descheduling and maximum sample width are not suspension');
+    Raised := False;
+    try Guard.Observe(100002000, 99999999, 100002000);
+    except on E: EClockDiscontinuity do Raised := E.Message = 'CLOCK_PAIR_BACKWARD'; end;
+    Check(Raised, 'backward inclusive clock rejected');
+  finally
+    Guard.Free;
+  end;
+  Timer := TPlatformTimer.Create;
+  try
+    Generation := Timer.SuspendGeneration;
+    Writeln('Suspend detection available: ', Timer.SuspendDetectionAvailable);
+    for I := 1 to 1000 do
+      Check(Timer.SuspendGeneration = Generation, 'native paired clock no false suspend');
+  finally
+    Timer.Free;
+  end;
+end;
 procedure TestChurn;
 var Timer: TPlatformTimer; I, Before: Integer;
 begin
@@ -173,6 +228,7 @@ begin
     TestHandshake(1000, 0, False);
     TestHandshake(10, 10000, False);
     TestChurn;
+    TestClockIntervals;
     Writeln('PASS NotificationTests');
   except
     on E: Exception do
