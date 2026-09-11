@@ -1,6 +1,6 @@
 Installation documentation correction: Boss 3.0.17 can advance to `main` even
 when its dependency manifest requests a release version. Use the documented
-tagged Git clone or release source ZIP when the exact revision matters. Plain
+tagged Git clone or release source ZIP when the exact revision matters.
 Boss installation remains supported and exercised by CI; plain installation is
 verified separately after publication. Exported files are compared with the
 expected commit before compilation.
