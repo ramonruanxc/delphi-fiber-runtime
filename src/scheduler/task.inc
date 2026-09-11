@@ -36,7 +36,7 @@ procedure TScheduledTask.Delay(ADurationUs: Int64);
 begin RequireCurrent; AwaitUntil(AddDuration(FOwner.NowUs, ADurationUs)); end;
 procedure TScheduledTask.AwaitUntil(ADeadlineUs: Int64);
 begin
-  RequireCurrent; CheckCancelled;
+  RequireCurrent; CheckCancelled; BeginTimedWait(ADeadlineUs);
   while FOwner.NowUs < ADeadlineUs do Suspend(swTimer, ADeadlineUs);
 end;
 procedure TScheduledTask.Park;
@@ -45,7 +45,7 @@ procedure TScheduledTask.Cancel;
 begin
   FOwner.CheckOwner;
   FContext.Cancel;
-  if FContext.State = fsSuspended then FOwner.Enqueue(Self);
+  if FContext.State = fsSuspended then FOwner.Enqueue(Self, rrCancel);
 end;
 procedure TScheduledTask.CheckCancelled;
 begin FOwner.CheckOwner; FContext.CheckCancelled; end;
@@ -63,3 +63,23 @@ function TScheduledTask.GetLocalValue: Pointer;
 begin FOwner.CheckOwner; Result := FContext.LocalValue; end;
 procedure TScheduledTask.SetLocalValue(Value: Pointer);
 begin FOwner.CheckOwner; FContext.LocalValue := Value; end;
+procedure TScheduledTask.BeginTimedWait(ADeadline: Int64);
+begin
+  FTrace.HasWaitDeadline := True; FTrace.WaitDeadlineUs := ADeadline;
+  FTrace.HasTimerObservation := False; FTrace.HasReadyEnqueue := False;
+  FTrace.HasResume := False;
+end;
+function TScheduledTask.GetTrace: TSchedulerTaskTrace;
+begin FOwner.CheckOwner; Result := FTrace; end;
+function TScheduledTask.AwaitUntilOrResume(ADeadlineUs, AExpectedGeneration: Int64): Boolean;
+var Now: Int64;
+begin
+  RequireCurrent; CheckCancelled; BeginTimedWait(ADeadlineUs);
+  while True do
+  begin
+    Now := FOwner.NowUs;
+    if FOwner.ResumeGeneration <> AExpectedGeneration then Exit(False);
+    if Now >= ADeadlineUs then Exit(True);
+    Suspend(swTimer, ADeadlineUs);
+  end;
+end;

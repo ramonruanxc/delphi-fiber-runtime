@@ -16,6 +16,15 @@ type
   TScheduledTask = class;
   TScheduledProc = procedure(ATask: TScheduledTask; AData: Pointer);
   TCarrierProc = procedure(AData: Pointer);
+  TCarrierCondition = function(AData: Pointer): Boolean;
+  TResumePolicy = (rpRebasePeriodic, rpStop);
+  TReadyReason = (rrSpawn, rrYield, rrWake, rrTimer, rrCancel, rrResume);
+  TSchedulerTaskTrace = record
+    HasWaitDeadline, HasTimerObservation, HasReadyEnqueue, HasResume: Boolean;
+    WaitDeadlineUs, TimerObservedUs, ReadyEnqueuedUs, ResumedUs: Int64;
+    ReadyReason: TReadyReason;
+    ReadyGeneration, ResumeGeneration: Int64;
+  end;
   TTaskWait = (swReady, swParked, swTimer);
   TCarrierWork = record Proc: TCarrierProc; Data: Pointer; end;
   TScheduledTask = class
@@ -25,12 +34,15 @@ type
     FProc: TScheduledProc;
     FData: Pointer;
     FWait: TTaskWait;
+    FTrace: TSchedulerTaskTrace;
     FDeadline: Int64;
     FQueued, FRelease: Boolean;
     {$PUSH}{$WARN 3018 OFF}
     constructor Create(AOwner: TFiberScheduler; AProc: TScheduledProc; AData: Pointer);
     {$POP}
     procedure RequireCurrent;
+    procedure BeginTimedWait(ADeadline: Int64);
+    function GetTrace: TSchedulerTaskTrace;
     procedure Suspend(AWait: TTaskWait; ADeadline: Int64);
     function GetState: TFiberState;
     function GetCancelRequested: Boolean;
@@ -45,9 +57,11 @@ type
     procedure Yield;
     procedure Delay(ADurationUs: Int64);
     procedure AwaitUntil(ADeadlineUs: Int64);
+    function AwaitUntilOrResume(ADeadlineUs, AExpectedGeneration: Int64): Boolean;
     procedure Park;
     procedure Cancel;
     procedure CheckCancelled;
+    property Trace: TSchedulerTaskTrace read GetTrace;
     property State: TFiberState read GetState;
     property CancelRequested: Boolean read GetCancelRequested;
     property ErrorClass: string read GetErrorClass;
@@ -62,7 +76,8 @@ type
     FDriver: TSchedulerDriver;
     FOwnDriver, FLockReady, FPumping, FClockSeen, FClockFault: Boolean;
     FStopping, FInCleanup, FGenerationSeen: Boolean;
-    FLastNow, FGeneration: Int64;
+    FLastNow, FGeneration, FResumeEpochUs: Int64;
+    FResumePolicy: TResumePolicy;
     FTasks, FReady: array of TScheduledTask;
     FPosts: array of TCarrierWork;
     FCount, FReadyHead, FReadyCount, FPostHead, FPostCount: Integer;
@@ -70,24 +85,32 @@ type
     FCurrent: TScheduledTask;
     FPostFaultCount: Int64;
     procedure RequireCarrier;
-    procedure Enqueue(T: TScheduledTask);
+    procedure Enqueue(T: TScheduledTask; Reason: TReadyReason = rrWake);
+    function TraceNow(out Value: Int64): Boolean;
     function PopReady: TScheduledTask;
     function TakePost(out Work: TCarrierWork): Boolean;
     function Settled: Boolean;
     function IsStopping: Boolean;
     procedure Maintain(Now: Int64; out Nearest: Int64);
-    function Pump(Deadline: Int64; Target: TScheduledTask; Cleanup: Boolean): Boolean;
+    function Pump(Deadline: Int64; Target: TScheduledTask; Cleanup: Boolean;
+      Condition: TCarrierCondition = nil; Data: Pointer = nil): Boolean;
     function ClockNow(Cleanup: Boolean): Int64;
     function GetCurrentTask: TScheduledTask;
     function GetPostFaultCount: Int64;
     function GetMaxTasks: Integer;
     function GetClockDiscontinuity: Boolean;
+    function GetResumeGeneration: Int64;
+    function GetResumeEpochUs: Int64;
   public
-    constructor Create(AMaxTasks: Integer = 1024; ADriver: TSchedulerDriver = nil);
+    constructor Create(AMaxTasks: Integer = 1024; ADriver: TSchedulerDriver = nil;
+      AResumePolicy: TResumePolicy = rpRebasePeriodic);
     procedure BeforeDestruction; override;
     destructor Destroy; override;
     function Spawn(AProc: TScheduledProc; AData: Pointer): TScheduledTask;
     function RunUntil(ADeadlineUs: Int64): Boolean;
+    function RunUntilCondition(ACondition: TCarrierCondition; AData: Pointer;
+      ADeadlineUs: Int64): Boolean;
+    function CleanupNowUs: Int64;
     function RunTaskUntil(ATask: TScheduledTask; ADeadlineUs: Int64): Boolean;
     function NowUs: Int64;
     procedure CheckOwner;
@@ -100,6 +123,8 @@ type
     property PostFaultCount: Int64 read GetPostFaultCount;
     property MaxTasks: Integer read GetMaxTasks;
     property ClockDiscontinuity: Boolean read GetClockDiscontinuity;
+    property ResumeGeneration: Int64 read GetResumeGeneration;
+    property ResumeEpochUs: Int64 read GetResumeEpochUs;
   end;
 implementation
 uses FiberRuntime.Platform;

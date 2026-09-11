@@ -1,7 +1,8 @@
-constructor TFiberScheduler.Create(AMaxTasks: Integer; ADriver: TSchedulerDriver);
+constructor TFiberScheduler.Create(AMaxTasks: Integer; ADriver: TSchedulerDriver;
+  AResumePolicy: TResumePolicy);
 begin
   inherited Create;
-  FOwner := GetCurrentThreadID;
+  FOwner := GetCurrentThreadID; FResumePolicy := AResumePolicy;
   if AMaxTasks <= 0 then raise EFiberUsage.Create('Capacity must be positive');
   InitCriticalSection(FLock); FLockReady := True;
   SetLength(FTasks, AMaxTasks); SetLength(FReady, AMaxTasks);
@@ -50,7 +51,7 @@ begin
     Result := TScheduledTask.Create(Self, AProc, AData);
     FTasks[FCount] := Result; Inc(FCount);
   finally LeaveCriticalSection(FLock); end;
-  Enqueue(Result);
+  Enqueue(Result, rrSpawn);
 end;
 function TFiberScheduler.Post(AProc: TCarrierProc; AData: Pointer): Boolean;
 var Index: Integer;
@@ -97,7 +98,7 @@ begin CheckOwner; Result := Length(FTasks); end;
 function TFiberScheduler.GetClockDiscontinuity: Boolean;
 begin CheckOwner; Result := FClockFault; end;
 function TFiberScheduler.ClockNow(Cleanup: Boolean): Int64;
-var Generation: Int64;
+var Generation: Int64; I: Integer; Resumed: Boolean;
 begin
   if Cleanup and FClockFault then
   begin
@@ -108,11 +109,19 @@ begin
   try
     Generation := FDriver.ClockGeneration;
     Result := FDriver.NowUs;
-    if FClockFault or (FClockSeen and (Result < FLastNow)) or
-      (FGenerationSeen and (Generation <> FGeneration)) then
+    Resumed := FGenerationSeen and (Generation > FGeneration);
+    if FClockFault or (Result < 0) or (Generation < 0) or
+      (FClockSeen and (Result < FLastNow)) or
+      (FGenerationSeen and (Generation < FGeneration)) or
+      (Resumed and (FResumePolicy = rpStop)) then
       raise EClockDiscontinuity.Create('Scheduler clock discontinuity');
+    if Resumed or not FGenerationSeen then FResumeEpochUs := Result;
     FGeneration := Generation; FGenerationSeen := True;
     FLastNow := Result; FClockSeen := True;
+    if Resumed then
+      for I := 0 to FCount - 1 do
+        if (FTasks[I].FWait = swTimer) and (FTasks[I] <> FCurrent) then
+          Enqueue(FTasks[I], rrResume);
   except
     on E: EClockDiscontinuity do
     begin
@@ -155,4 +164,17 @@ begin
   Deadline := AddDuration(ClockNow(True), ATimeoutUs);
   ATask.Cancel;
   Result := Pump(Deadline, ATask, True);
+end;
+function TFiberScheduler.GetResumeGeneration: Int64;
+begin CheckOwner; Result := FGeneration; end;
+function TFiberScheduler.GetResumeEpochUs: Int64;
+begin CheckOwner; Result := FResumeEpochUs; end;
+function TFiberScheduler.CleanupNowUs: Int64;
+begin CheckOwner; Result := ClockNow(True); end;
+function TFiberScheduler.RunUntilCondition(ACondition: TCarrierCondition;
+  AData: Pointer; ADeadlineUs: Int64): Boolean;
+begin
+  RequireCarrier;
+  if not Assigned(ACondition) then raise EFiberUsage.Create('Condition callback is required');
+  Result := Pump(ADeadlineUs, nil, True, ACondition, AData);
 end;

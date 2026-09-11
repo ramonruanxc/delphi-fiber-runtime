@@ -5,7 +5,11 @@ unit FiberRuntime.Schedule;
 interface
 
 type
+  TPeriodicSegment = record
+    Generation, EpochUs, EndedUs, StartedCount, SkippedCount: Int64;
+  end;
   TPeriodicTick = record
+    Segment: Int64;
     Index: Int64;
     DeadlineUs: Int64;
     StartedUs: Int64;
@@ -16,12 +20,21 @@ type
     FEpochUs, FPeriodUs, FIndex, FDeadlineUs: Int64;
     FStarted, FSkipped, FLastObservedUs: Int64;
     FActive, FCancelled: Boolean;
+    FDiscontinuities, FSegmentStarted, FSegmentSkipped: Int64;
+    FLastSegment: TPeriodicSegment;
+    procedure ApplyRebase(ANewEpochUs: Int64; CompleteActive: Boolean);
     procedure ValidateTime(ANowUs: Int64);
     function DeadlineFor(AIndex: Int64): Int64;
   public
     constructor Create(AEpochUs, APeriodUs: Int64);
     function TryAcquire(ANowUs: Int64; out ATick: TPeriodicTick): Boolean;
     procedure Complete(ANowUs: Int64);
+    procedure Rebase(ANewEpochUs: Int64);
+    procedure CompleteAndRebase(ANowUs: Int64);
+    function EpochUs: Int64;
+    function DiscontinuityCount: Int64;
+    function LastSegment: TPeriodicSegment;
+    function CurrentSegment: TPeriodicSegment;
     procedure Cancel;
     function NextDeadlineUs: Int64;
     function StartedCount: Int64;
@@ -50,7 +63,7 @@ begin
   FPeriodUs := APeriodUs;
   FIndex := 1;
   FDeadlineUs := DeadlineFor(FIndex);
-  FLastObservedUs := AEpochUs;
+  FLastObservedUs := AEpochUs; FLastSegment.Generation := -1;
 end;
 
 procedure TPeriodicSchedule.ValidateTime(ANowUs: Int64);
@@ -95,6 +108,7 @@ begin
   FStarted := NewStarted;
   FLastObservedUs := ANowUs;
   FActive := True;
+  ATick.Segment := FDiscontinuities;
   ATick.Index := FIndex;
   ATick.DeadlineUs := FDeadlineUs;
   ATick.StartedUs := ANowUs;
@@ -121,6 +135,38 @@ begin
   FActive := False;
 end;
 
+procedure TPeriodicSchedule.ApplyRebase(ANewEpochUs: Int64; CompleteActive: Boolean);
+var Next, Generation: Int64; Previous: TPeriodicSegment;
+begin
+  if FActive <> CompleteActive then
+    raise Exception.Create('Rebase requires idle state; CompleteAndRebase requires active state');
+  ValidateTime(ANewEpochUs);
+  Next := AddNonnegative(ANewEpochUs, FPeriodUs);
+  Generation := AddNonnegative(FDiscontinuities, 1);
+  Previous := CurrentSegment; Previous.EndedUs := ANewEpochUs;
+  { Commit after every check. Elapsed discontinuity cycles are not normal skips. }
+  FLastSegment := Previous; FDiscontinuities := Generation;
+  FSegmentStarted := FStarted; FSegmentSkipped := FSkipped;
+  FEpochUs := ANewEpochUs; FIndex := 1; FDeadlineUs := Next;
+  FLastObservedUs := ANewEpochUs; FActive := False;
+end;
+procedure TPeriodicSchedule.Rebase(ANewEpochUs: Int64);
+begin ApplyRebase(ANewEpochUs, False); end;
+procedure TPeriodicSchedule.CompleteAndRebase(ANowUs: Int64);
+begin ApplyRebase(ANowUs, True); end;
+function TPeriodicSchedule.EpochUs: Int64;
+begin Result := FEpochUs; end;
+function TPeriodicSchedule.DiscontinuityCount: Int64;
+begin Result := FDiscontinuities; end;
+function TPeriodicSchedule.LastSegment: TPeriodicSegment;
+begin Result := FLastSegment; end;
+function TPeriodicSchedule.CurrentSegment: TPeriodicSegment;
+begin
+  Result.Generation := FDiscontinuities; Result.EpochUs := FEpochUs;
+  Result.EndedUs := FLastObservedUs;
+  Result.StartedCount := FStarted - FSegmentStarted;
+  Result.SkippedCount := FSkipped - FSegmentSkipped;
+end;
 procedure TPeriodicSchedule.Cancel;
 begin FCancelled := True end;
 function TPeriodicSchedule.NextDeadlineUs: Int64;

@@ -178,6 +178,43 @@ begin
   finally S.Free end;
 end;
 
+procedure TestRebase;
+var S: TPeriodicSchedule; T: TPeriodicTick; Segment: TPeriodicSegment; Raised: Boolean;
+begin
+  S := TPeriodicSchedule.Create(0, 100);
+  try
+    Check(S.TryAcquire(250, T), 'REBASE_INITIAL_ACQUIRE'); S.Complete(250);
+    S.Rebase(10000);
+    CheckState(S, 10100, 1, 1, False, False, 'REBASE_RETAINS_AGGREGATES');
+    Check((S.EpochUs = 10000) and (S.DiscontinuityCount = 1), 'REBASE_METADATA');
+    Segment := S.LastSegment;
+    Check((Segment.Generation = 0) and (Segment.EpochUs = 0) and
+      (Segment.EndedUs = 10000) and (Segment.StartedCount = 1) and
+      (Segment.SkippedCount = 1), 'REBASE_SEGMENT_SNAPSHOT');
+    Check(not S.TryAcquire(10099, T), 'REBASE_NO_REPLAY_OR_EARLY');
+    Check(S.TryAcquire(10100, T) and (T.Index = 1) and (T.Segment = 1), 'REBASE_NEW_SEGMENT');
+    Raised := False; try S.Rebase(20000); except on Exception do Raised := True; end;
+    Check(Raised and S.IsActive and (S.EpochUs = 10000), 'REBASE_ACTIVE_REJECTED');
+    Raised := False; try S.CompleteAndRebase(High(Int64)); except on ERangeError do Raised := True; end;
+    Check(Raised and S.IsActive and (S.DiscontinuityCount = 1), 'REBASE_ACTIVE_OVERFLOW_ATOMIC');
+    S.CompleteAndRebase(100000);
+    CheckState(S, 100100, 2, 1, False, False, 'REBASE_ACTIVE_EXCLUDES_SLEEP_SKIPS');
+    Segment := S.LastSegment;
+    Check((S.DiscontinuityCount = 2) and (Segment.Generation = 1) and
+      (Segment.StartedCount = 1) and (Segment.SkippedCount = 0), 'REBASE_ACTIVE_SEGMENT');
+    Segment := S.CurrentSegment;
+    Check((Segment.Generation = 2) and (Segment.EpochUs = 100000) and
+      (Segment.StartedCount = 0) and (Segment.SkippedCount = 0), 'REBASE_CURRENT_SEGMENT');
+    Raised := False; try S.CompleteAndRebase(200000); except on Exception do Raised := True; end;
+    Check(Raised and (S.EpochUs = 100000), 'REBASE_UNMATCHED_COMPLETE');
+    Raised := False; try S.Rebase(99999); except on ERangeError do Raised := True; end;
+    Check(Raised and (S.DiscontinuityCount = 2), 'REBASE_BACKWARD_ATOMIC');
+    Raised := False; try S.Rebase(High(Int64)); except on ERangeError do Raised := True; end;
+    Check(Raised and (S.EpochUs = 100000), 'REBASE_OVERFLOW_ATOMIC');
+    S.Cancel; S.Rebase(200000);
+    Check(S.IsCancelled and not S.TryAcquire(200100, T), 'REBASE_CANCEL_STICKY');
+  finally S.Free; end;
+end;
 begin
   Checks := 0;
   try
@@ -187,6 +224,7 @@ begin
     TestInvalidConstruction;
     TestBackwardAndUsage;
     TestOverflowAtomicity;
+    TestRebase;
     WriteLn('PASS ScheduleTests checks=', Checks);
   except
     on E: Exception do

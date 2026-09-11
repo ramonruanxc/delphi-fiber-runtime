@@ -64,7 +64,10 @@ begin
   T.Yield;
 end;
 procedure TOwnerProbe.Execute;
+var Trace: TSchedulerTaskTrace;
 begin
+  try Trace := Task.Trace; Check(not Trace.HasResume, 'FOREIGN_TRACE'); except on EFiberUsage do Inc(Rejected); end;
+  try Task.AwaitUntilOrResume(1, 0); except on EFiberUsage do Inc(Rejected); end;
   try Task.Yield; except on EFiberUsage do Inc(Rejected); end;
   try Task.Park; except on EFiberUsage do Inc(Rejected); end;
   try Task.Delay(1); except on EFiberUsage do Inc(Rejected); end;
@@ -86,6 +89,10 @@ begin
   try S.StopTask(Task, 1); except on EFiberUsage do Inc(Rejected); end;
   try S.Stop(1); except on EFiberUsage do Inc(Rejected); end;
   try S.WakeTask(Task); except on EFiberUsage do Inc(Rejected); end;
+  try S.RunUntilCondition(nil, nil, 1); except on EFiberUsage do Inc(Rejected); end;
+  try S.CleanupNowUs; except on EFiberUsage do Inc(Rejected); end;
+  try Check(S.ResumeGeneration >= 0, 'FOREIGN_RESUME_GEN'); except on EFiberUsage do Inc(Rejected); end;
+  try Check(S.ResumeEpochUs >= 0, 'FOREIGN_RESUME_EPOCH'); except on EFiberUsage do Inc(Rejected); end;
   try S.CheckOwner; except on EFiberUsage do Inc(Rejected); end;
   try Check(S.NowUs = 0, 'FOREIGN_NOW'); except on EFiberUsage do Inc(Rejected); end;
   try Check(S.CurrentTask = nil, 'FOREIGN_CURRENT'); except on EFiberUsage do Inc(Rejected); end;
@@ -100,7 +107,7 @@ begin
   Parked := S.Spawn(Empty, nil);
   Probe := TOwnerProbe.Create(True); Probe.Task := Parked;
   Probe.Start; Probe.WaitFor;
-  Check(Probe.Rejected = 27, 'SCHEDULER_FOREIGN_OWNER'); Probe.Free;
+  Check(Probe.Rejected = 33, 'SCHEDULER_FOREIGN_OWNER'); Probe.Free;
   R := False; try Parked.Free; except on EFiberUsage do R := True; end;
   Check(R and (Parked.State = fsCreated), 'SCHEDULER_FREE_CREATED');
   R := False; try Parked.Yield; except on EFiberUsage do R := True; end;
@@ -191,7 +198,7 @@ procedure FairOnce(T: TScheduledTask; Data: Pointer);
 begin Inc(FairCalls); end;
 procedure TestMailboxFairness;
 begin
-  D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D);
+  D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D, rpStop);
   S.Spawn(FairOnce, nil); S.Post(Flood, nil);
   Check(not S.RunUntil(10), 'SCHEDULER_FLOOD_DEADLINE');
   Check(FairCalls = 1, 'SCHEDULER_MAILBOX_FAIRNESS');
@@ -201,7 +208,7 @@ end;
 procedure TestTargetAndInvalid;
 var T: TScheduledTask; R: Boolean;
 begin
-  D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D);
+  D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D, rpStop);
   R := False; try S.Spawn(nil, nil); except on EFiberUsage do R := True; end;
   Check(R, 'SCHEDULER_NIL_PROC');
   Parked := S.Spawn(Parking, nil); T := S.Spawn(Empty, nil);
@@ -220,7 +227,7 @@ begin
   for Mode := 0 to 1 do
   begin
     Cleanups := 0; D := TVirtualDriver.Create; D.Clock := 100;
-    S := TFiberScheduler.Create(2, D); Parked := S.Spawn(Parking, nil);
+    S := TFiberScheduler.Create(2, D, rpStop); Parked := S.Spawn(Parking, nil);
     Check(not S.RunUntil(200), 'SCHEDULER_CLOCK_PARK');
     if Mode = 0 then D.Clock := 199 else Inc(D.Generation);
     R := False; try S.RunUntil(300); except on EFiberUsage do R := True; end;
@@ -310,7 +317,7 @@ procedure TestDriverFailureRetention;
 var Driver: TFailingDriver; R: Boolean;
 begin
   Driver := TFailingDriver.Create; S := TFiberScheduler.Create(1, Driver);
-  S.Spawn(Empty, nil);
+  S.Spawn(Empty, nil); Driver.ReadCount := 0;
   R := False; try S.Stop(100); except on EConvertError do R := True; end;
   Check(R, 'SCHEDULER_DRIVER_FAILURE_PROPAGATED');
   R := False; try R := S.Stop(100); except on EFiberUsage do R := False; end;

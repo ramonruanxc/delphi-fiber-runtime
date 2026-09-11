@@ -1,4 +1,11 @@
-procedure TFiberScheduler.Enqueue(T: TScheduledTask);
+function TFiberScheduler.TraceNow(out Value: Int64): Boolean;
+begin
+  { Diagnostic reads must never alter task admission or notification semantics.
+    A failed read is explicitly unavailable; dispatch clock checks remain strict. }
+  try Value := FDriver.NowUs; Result := True;
+  except Value := 0; Result := False; end;
+end;
+procedure TFiberScheduler.Enqueue(T: TScheduledTask; Reason: TReadyReason);
 begin
   {$IFNDEF CONTEXT_PROVE_READY}if T.FQueued then Exit;{$ENDIF}
   { Negative mutation is detected before a duplicate could transfer control. }
@@ -7,6 +14,8 @@ begin
   if FReadyCount = Length(FReady) then raise EFiberUsage.Create('Ready queue invariant violated');
   FReady[(FReadyHead + FReadyCount) mod Length(FReady)] := T;
   Inc(FReadyCount); T.FQueued := True;
+  T.FTrace.HasReadyEnqueue := TraceNow(T.FTrace.ReadyEnqueuedUs);
+  T.FTrace.ReadyReason := Reason; T.FTrace.ReadyGeneration := FGeneration;
 end;
 procedure TFiberScheduler.WakeTask(ATask: TScheduledTask);
 begin
@@ -55,11 +64,17 @@ begin
     if Stopping then T.Cancel;
     if Terminal(T) then Continue;
     if T.FWait = swTimer then
-      if Now >= T.FDeadline then Enqueue(T)
+      if Now >= T.FDeadline then
+      begin
+        if not T.FTrace.HasTimerObservation then
+        begin T.FTrace.TimerObservedUs := Now; T.FTrace.HasTimerObservation := True; end;
+        Enqueue(T, rrTimer);
+      end
       else if not T.FQueued and (T.FDeadline < Nearest) then Nearest := T.FDeadline;
   end;
 end;
-function TFiberScheduler.Pump(Deadline: Int64; Target: TScheduledTask; Cleanup: Boolean): Boolean;
+function TFiberScheduler.Pump(Deadline: Int64; Target: TScheduledTask; Cleanup: Boolean;
+  Condition: TCarrierCondition; Data: Pointer): Boolean;
 var N, Nearest: Int64; T: TScheduledTask; Work: TCarrierWork; HadPost: Boolean; WallStart, WallBudget: QWord;
 begin
   FPumping := True; FInCleanup := Cleanup; HadPost := False;
@@ -74,7 +89,8 @@ begin
     while True do
     begin
       N := ClockNow(Cleanup); Maintain(N, Nearest);
-      if Target <> nil then Result := Terminal(Target) else Result := Settled;
+      if Assigned(Condition) then Result := Condition(Data)
+      else if Target <> nil then Result := Terminal(Target) else Result := Settled;
       if Result then Exit;
       if (N >= Deadline) or (Cleanup and (GetTickCount64 - WallStart >= WallBudget)) then Exit(False);
       { One mailbox item and one FIFO turn bound timer/mailbox service latency. }
@@ -91,10 +107,12 @@ begin
       begin
         if not Terminal(T) then
         begin
+          T.FTrace.HasResume := TraceNow(T.FTrace.ResumedUs);
+          T.FTrace.ResumeGeneration := FGeneration;
           FCurrent := T;
           try T.FContext.Resume;
           finally FCurrent := nil; end;
-          if not Terminal(T) and (T.FWait = swReady) then Enqueue(T);
+          if not Terminal(T) and (T.FWait = swReady) then Enqueue(T, rrYield);
         end;
         Continue;
       end;

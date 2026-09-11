@@ -4,7 +4,7 @@ begin
   for Mode := 0 to 1 do
   begin
     Cleanups := 0; D := TVirtualDriver.Create; D.Clock := 100;
-    S := TFiberScheduler.Create(2, D); Parked := S.Spawn(Parking, nil);
+    S := TFiberScheduler.Create(2, D, rpStop); Parked := S.Spawn(Parking, nil);
     Check(not S.RunUntil(200), 'SCHEDULER_STOP_TASK_PARK');
     if Mode = 0 then D.Clock := 199 else Inc(D.Generation);
     R := False; try S.RunUntil(300); except on EFiberUsage do R := True; end;
@@ -40,7 +40,7 @@ begin Inc(D.Generation); end;
 procedure TestStopTaskNewFault;
 var Other: TScheduledTask;
 begin
-  Cleanups := 0; D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D);
+  Cleanups := 0; D := TVirtualDriver.Create; S := TFiberScheduler.Create(2, D, rpStop);
   Parked := S.Spawn(Parking, nil); Other := S.Spawn(Parking, nil);
   Check(not S.RunUntil(10), 'SCHEDULER_STOP_TASK_NEW_FAULT_PARK');
   Check(S.Post(ChangeGeneration, nil), 'SCHEDULER_STOP_TASK_NEW_FAULT_POST');
