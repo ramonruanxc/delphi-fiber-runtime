@@ -29,6 +29,14 @@ program includes the payload, callbacks, fault checks and cleanup. The receiver
 is a dormant service that owns a subscription: it does not need `Start` to
 receive events. `StopAll` is an application procedure, shown below.
 
+## Execution flow
+
+![Execution flow of delphi-fiber-runtime](docs/images/architecture-flow.png)
+
+Many stackful tasks share one owner thread. The scheduler resumes ready tasks;
+cooperative yields, timers and channel waits let other tasks run. Blocking
+calls still occupy the carrier.
+
 ## Why this exists
 
 A native thread for every long-lived service is easy to reason about, but each
