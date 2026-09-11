@@ -92,7 +92,9 @@ begin
   {$ENDIF}
 end;
 function TFiberService.Stop(ATimeoutUs: Int64): Boolean;
+{$IFDEF CONTEXT_PROVE_SERVICE_STOP}
 var Now, Deadline: Int64;
+{$ENDIF}
 begin
   FScheduler.CheckOwner;
   if ATimeoutUs < 0 then raise EFiberUsage.Create('Stop timeout must be nonnegative');
@@ -101,10 +103,16 @@ begin
   Cancel;
   if (FTask = nil) or (FTask.State in [fsCompleted, fsCancelled, fsFaulted]) then
     begin Result := True; Exit end;
+  {$IFDEF CONTEXT_PROVE_SERVICE_STOP}
+  { Also omit StopTask's cancellation, so the mutation tests missing service
+    stop admission without its cleanup helper repairing that omission. }
   Now := FScheduler.NowUs;
   if Now > High(Int64) - ATimeoutUs then Deadline := High(Int64)
   else Deadline := Now + ATimeoutUs;
   Result := FScheduler.RunTaskUntil(FTask, Deadline);
+  {$ELSE}
+  Result := FScheduler.StopTask(FTask, ATimeoutUs);
+  {$ENDIF}
 end;
 function TFiberService.GetTask: TScheduledTask;
 begin FScheduler.CheckOwner; Result := FTask end;

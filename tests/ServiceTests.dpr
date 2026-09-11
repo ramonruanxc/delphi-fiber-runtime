@@ -6,10 +6,12 @@ uses {$IFDEF UNIX}cthreads,{$ENDIF} SysUtils, Classes,
 type
   TFakeDriver = class(TSchedulerDriver)
     Time: Int64;
+    Generation: Int64;
     FailClock: Boolean;
     function NowUs: Int64; override;
     procedure WaitUntil(DeadlineUs: Int64); override;
     procedure Wake; override;
+    function ClockGeneration: Int64; override;
   end;
   TOwnerProbe = class(TThread)
     Service: TFiberService;
@@ -37,6 +39,8 @@ procedure TFakeDriver.WaitUntil(DeadlineUs: Int64);
 begin if DeadlineUs > Time then Time := DeadlineUs end;
 procedure TFakeDriver.Wake;
 begin end;
+function TFakeDriver.ClockGeneration: Int64;
+begin Result := Generation end;
 procedure Setup;
 begin
   Calls := 0; Active := 0; Cleanups := 0; Identity := nil;
@@ -144,7 +148,36 @@ begin
   BeforeStop := Driver.Time;
   Check(Service.Stop(50000), 'SERVICE_INDEPENDENT_STOP');
   Check(Driver.Time = BeforeStop, 'SERVICE_STOP_DOES_NOT_WAIT_OTHER');
+  Check(not OtherService.Task.CancelRequested, 'SERVICE_STOP_PRESERVES_OTHER');
+  Check(not Scheduler.RunUntil(2500), 'SERVICE_OTHER_STILL_RUNNING');
+  Check((OtherService.StartedCount = 2) and (Calls = 1),
+    'SERVICE_OTHER_CONTINUES_AFTER_STOP');
   Check(OtherService.Stop(10000), 'SERVICE_OTHER_STOP'); OtherService.Free;
+  Teardown;
+end;
+procedure TestClockFaultStop(GenerationChange: Boolean);
+var FaultDetected, Stopped: Boolean;
+begin
+  Setup;
+  Service := TFiberService.Create(Scheduler, 1000, Suspended, nil);
+  Service.Start;
+  Check(not Scheduler.RunUntil(1500), 'SERVICE_CLOCK_CASE_SUSPENDED');
+  Check((Calls = 1) and (Cleanups = 0), 'SERVICE_CLOCK_CASE_ACTIVE');
+  if GenerationChange then Inc(Driver.Generation) else Driver.Time := 1000;
+  FaultDetected := False;
+  try Scheduler.RunUntil(1600)
+  except on EFiberUsage do FaultDetected := True end;
+  Check(FaultDetected and Scheduler.ClockDiscontinuity, 'SERVICE_CLOCK_FAULT_DETECTED');
+  Stopped := False;
+  try Stopped := Service.Stop(1000)
+  except on EFiberUsage do Stopped := False end;
+  if GenerationChange then Check(Stopped, 'SERVICE_GENERATION_STOP_CLEANUP')
+  else Check(Stopped, 'SERVICE_BACKWARD_STOP_CLEANUP');
+  Check((Service.Task.State = fsCancelled) and (Cleanups = 1),
+    'SERVICE_CLOCK_FINALLY_ONCE');
+  Check(Service.Stop(1000), 'SERVICE_CLOCK_REPEAT_STOP');
+  Check(Scheduler.Stop(1000), 'SERVICE_CLOCK_SCHEDULER_SETTLED');
+  Check((Calls = 1) and (Cleanups = 1), 'SERVICE_CLOCK_NO_FURTHER_CALLBACK');
   Teardown;
 end;
 procedure TestGuardsAndFault;
@@ -205,5 +238,6 @@ end;
 begin
   TestStopBeforeCallback; TestFixedRate; TestStopTimeout;
   TestIndependentStop; TestGuardsAndFault; TestDormantEpochAndArguments;
+  TestClockFaultStop(False); TestClockFaultStop(True);
   WriteLn('PASS: service fixed epoch, persistent task, skips, stop, timeout, ownership');
 end.
