@@ -77,6 +77,9 @@ procedure THostRun.Tick(const Context: IServiceContext);
 var Current: Int64;
 begin
   Current := Data.Timer.NowUs;
+  {$IFDEF REFERENCE_PROVE_HOST_FAULT}
+  raise Exception.Create('Injected reference host callback failure');
+  {$ENDIF}
   if (Current >= EpochUs + 1000) and (Current < EndUs) then
     Data.Work(Data.Count + 1, 0, Current);
 end;
@@ -118,6 +121,14 @@ begin
   end;
   if Mode = 'host' then begin Host.StartAll; Timer.WaitUntil(EndUs);
     if not Host.StopAll(5000) then raise Exception.Create('Reference host stop timeout'); end;
+  if Mode = 'host' then for I := 0 to Services - 1 do
+    if Host.FaultCountOf('service-' + IntToStr(I)) <> 0 then begin
+      {$IFDEF REFERENCE_PROVE_HOST_FAULT}
+      WriteLn('ASSERTION FAILED: REFERENCE_HOST_FAULT'); Halt(1);
+      {$ELSE}
+      raise Exception.Create('Reference host callback fault');
+      {$ENDIF}
+    end;
   if Mode = 'workers' then for I := 0 to Services - 1 do begin
     if not Workers[I].WaitFor(5000) then raise Exception.Create('Reference worker timeout');
     if Workers[I].State = wsFaulted then raise Exception.Create('Reference worker fault');

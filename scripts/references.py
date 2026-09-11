@@ -22,7 +22,7 @@ def fetch(directory):
             git('remote', 'add', 'origin', url)
             git('fetch', '--depth', '1', 'origin', commit)
             git('checkout', '--detach', 'FETCH_HEAD')
-        if git('rev-parse', 'HEAD') != commit or git('status', '--porcelain', '--untracked-files=no'):
+        if git('rev-parse', 'HEAD') != commit or git('status', '--porcelain'):
             raise ValueError('Reference checkout is not the exact clean pinned revision: ' + name)
         paths.append(target / 'src')
     return paths
@@ -82,7 +82,17 @@ def collect(build, benchmark, compiler, root, out, flags):
             path = out / (name + '.raw.json')
             resources = benchmark(binary, [mode, '--services', str(services), '--cycles', '200', '--workers', '4', '--work-us', '100'], path)
             result = report(json.loads(path.read_text(encoding='utf-8')))
+            if result['started_activations'] == 0:
+                raise ValueError('Reference benchmark exercised no activation: ' + name)
             result['resources'] = resources
             (out / (name + '.json')).write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
             results[name] = result
+    negative = build(compiler, 'demo/ReferenceDemo.dpr', out / 'REFERENCE_PROVE_HOST_FAULT',
+                     ['REFERENCE_PROVE_HOST_FAULT'], [*flags, *['-Fu' + str(path) for path in sources]])
+    result = subprocess.run([str(negative), 'host', '--services', '1', '--cycles', '20'],
+                            capture_output=True, text=True, timeout=15)
+    output = result.stdout + result.stderr
+    (out / 'REFERENCE_PROVE_HOST_FAULT/run.log').write_text(output, encoding='utf-8')
+    if result.returncode != 1 or output.strip() != 'ASSERTION FAILED: REFERENCE_HOST_FAULT':
+        raise RuntimeError('Reference host fault gate did not fail explicitly: ' + output)
     return results

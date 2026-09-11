@@ -63,3 +63,10 @@ def analyze(data):
                                    'pascal_heap_used_after', 'pascal_heap_peak_used')}
         result['pascal_memory']['limitation'] = 'FPC allocation entry-point calls during RunUntil; heap peak is process lifetime, not OS committed memory. Observer adds overhead.'
     return result
+
+
+def validate_execution(data):
+    result = analyze(data)
+    if result['started_activations'] == 0:
+        raise ValueError('No runtime activation exercised; cannot certify demo execution')
+    return result

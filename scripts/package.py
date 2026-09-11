@@ -13,7 +13,8 @@ import zipfile
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from context_build import build_native, validate_demo
-from runtime_report import analyze as analyze_runtime
+from runtime_report import validate_execution as analyze_runtime
+from provenance import dirty as repository_dirty
 
 
 def validate_provenance(summary, commit, dirty, binary_hash, target_cpu, target_os):
@@ -66,7 +67,7 @@ def main():
     target_cpu = subprocess.check_output([args.fpc, '-iTP'], text=True).strip()
     target_os = subprocess.check_output([args.fpc, '-iTO'], text=True).strip()
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
-    dirty = bool(subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=ROOT, text=True).strip())
+    dirty = repository_dirty(ROOT)
     validate_provenance(summary, commit, dirty, hashlib.sha256(binary.read_bytes()).hexdigest(), target_cpu, target_os)
     validate_context_provenance(summary, hashlib.sha256(context_binary.read_bytes()).hexdigest())
     validate_runtime_provenance(summary, hashlib.sha256(runtime_binary.read_bytes()).hexdigest())

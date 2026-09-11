@@ -13,9 +13,10 @@ import time
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 from context_build import build_native, validate_demo
-from runtime_report import analyze as analyze_runtime
+from runtime_report import validate_execution as analyze_runtime
 from references import collect as collect_references
 from compatibility import probe
+from provenance import dirty as repository_dirty
 
 
 def expected_failure(code, output, assertion):
@@ -98,7 +99,7 @@ def main():
                    target_cpu=run([args.fpc, '-iTP']).strip(),
                    target_os=run([args.fpc, '-iTO']).strip(),
                    commit=run(['git', 'rev-parse', 'HEAD']).strip(),
-                   dirty=bool(run(['git', 'status', '--porcelain', '--untracked-files=no']).strip()),
+                   dirty=repository_dirty(ROOT),
                    build_flags=['-B', '-Mdelphi', '-Sa', '-Cr', '-Co'],
                    power_mode='not recorded; shared-runner timings are descriptive', checks={}, benchmarks={})
     print(run([sys.executable, '-m', 'unittest', 'discover', '-s', 'tests', '-p', 'test_*.py']))

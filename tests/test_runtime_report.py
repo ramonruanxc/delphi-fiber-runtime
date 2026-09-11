@@ -3,7 +3,7 @@ import sys
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).parents[1] / 'scripts'))
-from runtime_report import analyze
+from runtime_report import analyze, validate_execution
 
 
 def sample():
@@ -16,6 +16,14 @@ def sample():
 
 
 class RuntimeReportTests(unittest.TestCase):
+    def test_empty_trace_is_descriptive_but_cannot_certify_execution(self):
+        data = sample()
+        data['runs'][0]['samples'] = []
+        data['sent'] = data['received'] = 0
+        self.assertEqual(analyze(data)['skipped_activations'], 3)
+        with self.assertRaises(ValueError):
+            validate_execution(data)
+
     def test_counts_trailing_and_internal_skips(self):
         result = analyze(sample())
         self.assertEqual(result['planned_activations'], 3)
