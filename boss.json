@@ -1,0 +1,9 @@
+{
+  "name": "github.com/ramonruanxc/delphi-fiber-runtime",
+  "description": "Cooperative tasks, fixed-rate periodic services and bounded managed events for the validated Free Pascal backends.",
+  "version": "0.3.1-prototype.1",
+  "homepage": "https://github.com/ramonruanxc/delphi-fiber-runtime",
+  "mainsrc": "src",
+  "license": "MIT",
+  "dependencies": {}
+}

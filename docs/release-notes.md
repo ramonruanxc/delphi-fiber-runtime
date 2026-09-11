@@ -1,8 +1,13 @@
-Integrated experimental release: cooperative tasks, fixed-rate periodic services,
+Repository conventions update: consistent two-space Pascal formatting, an
+expanded usage guide, a runnable service/event QuickStart and a Boss manifest.
+Formatting preserves the original token stream. Boss installation and the
+installed-source QuickStart are exercised on every CI host.
+
+Integrated experimental runtime: cooperative tasks, fixed-rate periodic services,
 compatible timer/channel waits, bounded mailbox and explicit lifecycle ownership.
 
 Includes Windows, Linux and macOS ARM64/Intel packages with PeriodicDemo,
-ContextDemo and RuntimeDemo,
+ContextDemo, RuntimeDemo and QuickStart,
 tracked source and SHA-256
 checksums. The release workflow compiles and executes functional tests, negative
 builds, descriptive benchmarks and clean-consumer checks on the tagged revision.

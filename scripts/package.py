@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / 'scripts'))
 from context_build import build_native, validate_demo
 from runtime_report import validate_execution as analyze_runtime
 from provenance import dirty as repository_dirty
+from build_example import build_example
 
 
 def validate_provenance(summary, commit, dirty, binary_hash, target_cpu, target_os):
@@ -64,6 +65,7 @@ def main():
     binary = checks / 'demo' / ('PeriodicDemo.exe' if os.name == 'nt' else 'PeriodicDemo')
     context_binary = checks / 'context-demo' / ('ContextDemo.exe' if os.name == 'nt' else 'ContextDemo')
     runtime_binary = checks / 'runtime-demo' / ('RuntimeDemo.exe' if os.name == 'nt' else 'RuntimeDemo')
+    quickstart_binary = checks / 'quickstart' / ('QuickStart.exe' if os.name == 'nt' else 'QuickStart')
     target_cpu = subprocess.check_output([args.fpc, '-iTP'], text=True).strip()
     target_os = subprocess.check_output([args.fpc, '-iTO'], text=True).strip()
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
@@ -71,6 +73,8 @@ def main():
     validate_provenance(summary, commit, dirty, hashlib.sha256(binary.read_bytes()).hexdigest(), target_cpu, target_os)
     validate_context_provenance(summary, hashlib.sha256(context_binary.read_bytes()).hexdigest())
     validate_runtime_provenance(summary, hashlib.sha256(runtime_binary.read_bytes()).hexdigest())
+    if summary.get('quickstart_binary_sha256') != hashlib.sha256(quickstart_binary.read_bytes()).hexdigest():
+        raise ValueError('QuickStart binary differs from verified evidence')
     files = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
     source_zip = out / 'delphi-fiber-runtime-source.zip'
     create_source(ROOT, source_zip, [name for name in files if name])
@@ -101,6 +105,7 @@ def main():
         result = subprocess.run([str(runtime_consumer), '--cycles', '20'], cwd=consumer,
                                 check=True, timeout=30, capture_output=True, text=True)
         analyze_runtime(json.loads(result.stdout))
+        build_example(consumer, consumer / 'quickstart-build', args.fpc)
     # Machine reported by Python can differ from compiler target (e.g. Win32 on x64).
     native_zip = out / f'delphi-fiber-runtime-{target_os}-{target_cpu}.zip'
     with zipfile.ZipFile(native_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
@@ -110,6 +115,7 @@ def main():
         archive.write(binary, binary.name)
         archive.write(context_binary, context_binary.name)
         archive.write(runtime_binary, runtime_binary.name)
+        archive.write(quickstart_binary, quickstart_binary.name)
         for path in checks.glob('*.json'):
             archive.write(path, 'evidence/' + path.name)
         for path in checks.glob('*.csv'):

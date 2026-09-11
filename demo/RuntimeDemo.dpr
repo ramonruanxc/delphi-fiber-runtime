@@ -108,7 +108,7 @@ begin
 end;
 
 procedure ReceiveEvent(Task: TScheduledTask; Source: TServiceEndpoint;
-const Payload: IInterface; Data: Pointer);
+  const Payload: IInterface; Data: Pointer);
 var
   Started: Int64;
 begin

@@ -1,10 +1,15 @@
 program QuickStart;
 
-{$IFDEF FPC}{$MODE DELPHI}{$H+}{$ENDIF}
+{$IFDEF FPC}
+  {$MODE DELPHI}
+  {$H+}
+{$ENDIF}
 {$APPTYPE CONSOLE}
 
 uses
-  {$IFDEF UNIX}cthreads,{$ENDIF}
+  {$IFDEF UNIX}
+  cthreads,
+  {$ENDIF}
   SysUtils,
   FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
   FiberRuntime.Schedule in '../src/FiberRuntime.Schedule.pas',
