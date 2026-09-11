@@ -69,6 +69,8 @@ begin
   Event.Filter := EVFILT_USER;
   Event.Flags := EV_ADD or EV_ENABLE or EV_CLEAR;
   SubmitEvent(FTimer, Event);
+  Event.Ident := 3;
+  SubmitEvent(FTimer, Event);
 end;
 
 destructor TPlatformTimer.Destroy;
@@ -86,13 +88,18 @@ begin
   Result := Scale(Int64(Ticks), FNumer, Int64(FDenom) * 1000, False);
 end;
 
-function TPlatformTimer.WaitUntil(ADeadlineUs: Int64): Boolean;
+function TPlatformTimer.WaitUntilOrWake(ADeadlineUs: Int64): TTimerWaitResult;
 var Change, Event: TKEvent64; Status: Integer;
 begin
   while True do
   begin
-    if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(False);
-    if NowUs >= ADeadlineUs then Exit(True);
+    if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(twCancelled);
+    if NowUs >= ADeadlineUs then Exit(twDeadline);
+    if InterlockedExchange(FNotified, 0) <> 0 then
+    begin
+      if InterlockedCompareExchange(FCancelled, 0, 0) <> 0 then Exit(twCancelled);
+      Exit(twNotified);
+    end;
     FillChar(Change, SizeOf(Change), 0);
     Change.Ident := 2;
     Change.Filter := EVFILT_TIMER;
@@ -109,6 +116,19 @@ begin
       raise EOSError.CreateFmt('kevent64 event failed (%d)', [Event.Data]);
     { Clock and sticky atomic flag are rechecked after every notification. }
   end;
+end;
+
+procedure TPlatformTimer.Notify;
+var Event: TKEvent64;
+begin
+  { Publish a persistent predicate before triggering. Do not clear the kernel
+    event here: a concurrent trigger between predicate drain and park must stay. }
+  InterlockedExchange(FNotified, 1);
+  FillChar(Event, SizeOf(Event), 0);
+  Event.Ident := 3;
+  Event.Filter := EVFILT_USER;
+  Event.FFlags := NOTE_TRIGGER;
+  SubmitEvent(FTimer, Event);
 end;
 
 procedure TPlatformTimer.Cancel;

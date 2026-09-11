@@ -4,17 +4,18 @@ unit FiberRuntime.Platform;
 interface
 uses SysUtils;
 type
-  { One wait owner; Cancel is cross-thread and sticky. Join before destruction. }
+  TTimerWaitResult = (twDeadline, twNotified, twCancelled);
+  { One wait owner; Notify/Cancel are cross-thread. Join before destruction. }
   TPlatformTimer = class
   private
     {$IFDEF WINDOWS}
-    FTimer, FCancel: THandle;
+    FTimer, FCancel, FNotify: THandle;
     FFrequency: Int64;
     FHighResolution: Boolean;
     {$ELSE}
-    FTimer, FCancel: Integer;
+    FTimer, FCancel, FNotify: Integer;
     {$IFDEF DARWIN}
-    FCancelled: LongInt;
+    FCancelled, FNotified: LongInt;
     FNumer, FDenom: Cardinal;
     {$ENDIF}
     {$ENDIF}
@@ -23,6 +24,8 @@ type
     destructor Destroy; override;
     function NowUs: Int64;
     function WaitUntil(ADeadlineUs: Int64): Boolean;
+    function WaitUntilOrWake(ADeadlineUs: Int64): TTimerWaitResult;
+    procedure Notify;
     procedure Cancel;
     function BackendName: string;
   end;
@@ -67,6 +70,15 @@ begin
       raise ERangeError.Create('Native deadline conversion overflow');
     Inc(Result);
   end;
+end;
+
+function TPlatformTimer.WaitUntil(ADeadlineUs: Int64): Boolean;
+var Wake: TTimerWaitResult;
+begin
+  repeat
+    Wake := WaitUntilOrWake(ADeadlineUs);
+  until Wake <> twNotified;
+  Result := Wake = twDeadline;
 end;
 
 {$IFDEF WINDOWS}
