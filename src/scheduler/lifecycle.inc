@@ -98,7 +98,7 @@ begin CheckOwner; Result := Length(FTasks); end;
 function TFiberScheduler.GetClockDiscontinuity: Boolean;
 begin CheckOwner; Result := FClockFault; end;
 function TFiberScheduler.ClockNow(Cleanup: Boolean): Int64;
-var Generation: Int64; I: Integer; Resumed: Boolean;
+var Generation, GenerationAfter: Int64; I, Attempt: Integer; Resumed: Boolean;
 begin
   if Cleanup and FClockFault then
   begin
@@ -107,8 +107,16 @@ begin
     Exit;
   end;
   try
-    Generation := FDriver.ClockGeneration;
-    Result := FDriver.NowUs;
+    for Attempt := 1 to 3 do begin
+      Generation := FDriver.ClockGeneration;
+      Result := FDriver.NowUs;
+      GenerationAfter := FDriver.ClockGeneration;
+      if GenerationAfter < Generation then
+        raise EClockDiscontinuity.Create('Scheduler clock generation moved backward');
+      if Generation = GenerationAfter then Break;
+    end;
+    if Generation <> GenerationAfter then
+      raise EClockDiscontinuity.Create('Scheduler clock sample did not stabilize');
     Resumed := FGenerationSeen and (Generation > FGeneration);
     if FClockFault or (Result < 0) or (Generation < 0) or
       (FClockSeen and (Result < FLastNow)) or

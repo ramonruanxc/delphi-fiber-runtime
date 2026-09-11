@@ -118,7 +118,9 @@ begin
     end;
     if not ATask.AwaitUntilOrResume(FSchedule.NextDeadlineUs, FResumeGeneration) then Continue;
     if FCancelled then Exit;
-    if FSchedule.TryAcquire(FScheduler.NowUs, Tick) then begin
+    Now := FScheduler.NowUs;
+    if FResumeGeneration <> FScheduler.ResumeGeneration then Continue;
+    if FSchedule.TryAcquire(Now, Tick) then begin
       FProc(ATask, Tick, FData);
       { A suspended callback remains acquired until it returns. }
       Now := FScheduler.NowUs;

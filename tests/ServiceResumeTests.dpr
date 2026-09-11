@@ -5,6 +5,8 @@ uses {$IFDEF UNIX}cthreads,{$ENDIF} SysUtils,
 type
   TFakeDriver = class(TSchedulerDriver)
     Time, Generation: Int64;
+    BoundaryMode, Reads, TriggerAt: Integer;
+    procedure ObserveBoundary(Mode: Integer);
     function NowUs: Int64; override;
     function ClockGeneration: Int64; override;
     procedure WaitUntil(DeadlineUs: Int64); override;
@@ -12,21 +14,31 @@ type
   end;
 var
   Driver: TFakeDriver; Scheduler: TFiberScheduler; Service, Other: TFiberService;
-  Calls, Active, Finishes: Integer; Slow: Boolean;
+  Calls, Active, Finishes, StaleCount: Integer; Slow: Boolean;
   WaitDuration: Int64;
   LastTick: TPeriodicTick;
 procedure Check(Value: Boolean; const Name: string);
 begin if not Value then begin WriteLn('ASSERTION FAILED: ', Name); Halt(1) end end;
 function TFakeDriver.NowUs: Int64;
-begin Result := Time end;
+begin ObserveBoundary(2); Result := Time end;
 function TFakeDriver.ClockGeneration: Int64;
-begin Result := Generation end;
+begin ObserveBoundary(1); Result := Generation end;
+procedure TFakeDriver.ObserveBoundary(Mode: Integer);
+begin
+  if BoundaryMode <> Mode then Exit;
+  Inc(Reads);
+  if (TriggerAt > 0) and (Reads = TriggerAt) then begin
+    Time := 11000; Inc(Generation);
+  end;
+end;
 procedure TFakeDriver.WaitUntil(DeadlineUs: Int64);
 begin if DeadlineUs > Time then Time := DeadlineUs end;
 procedure TFakeDriver.Wake;
 begin end;
 procedure Callback(Task: TScheduledTask; const Tick: TPeriodicTick; Data: Pointer);
 begin
+  if (Tick.Segment = 0) and (Tick.StartedUs >= 11000) and
+    (Driver.Generation > 0) then Inc(StaleCount);
   Check(Active = 0, 'SERVICE_RESUME_NO_OVERLAP'); Inc(Active); Inc(Calls);
   LastTick := Tick;
   try if Slow and (Calls = 1) then Task.Delay(WaitDuration)
@@ -37,9 +49,27 @@ begin end;
 procedure Setup;
 begin
   Calls := 0; Active := 0; Finishes := 0; Slow := False;
+  StaleCount := 0;
   WaitDuration := 5000;
   Driver := TFakeDriver.Create; Scheduler := TFiberScheduler.Create(16, Driver);
   Service := TFiberService.Create(Scheduler, 1000, Callback, nil); Service.Start;
+end;
+procedure Teardown; forward;
+procedure TestAcquisitionBoundaries;
+var Mode, Boundary: Integer;
+begin
+  for Mode := 1 to 2 do
+    for Boundary := 1 to 20 do begin
+      Setup;
+      Check(not Scheduler.RunUntil(500), 'SERVICE_BOUNDARY_IDLE');
+      Driver.Time := 1000; Driver.BoundaryMode := Mode;
+      Driver.Reads := 0; Driver.TriggerAt := Boundary;
+      Check(not Scheduler.RunUntil(11001), 'SERVICE_BOUNDARY_RUNNING');
+      if Mode = 1 then Check(StaleCount = 0, 'SERVICE_RESUME_ACQUISITION_GENERATION')
+      else Check(StaleCount = 0, 'SERVICE_RESUME_ACQUISITION_TIME');
+      Check(Service.SkippedCount = 0, 'SERVICE_RESUME_BOUNDARY_NO_SLEEP_SKIPS');
+      Driver.TriggerAt := 0; Teardown;
+    end;
 end;
 procedure Teardown;
 begin
@@ -108,5 +138,6 @@ begin
 end;
 begin
   TestIdleResume; TestActiveResume; TestActiveWaitPreserved; TestCancellationDuringResume;
+  TestAcquisitionBoundaries;
   WriteLn('PASS: periodic resume rebase, no replay, active preservation, segments, cancellation');
 end.

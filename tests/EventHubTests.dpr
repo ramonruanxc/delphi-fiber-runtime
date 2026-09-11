@@ -103,7 +103,9 @@ begin
   Refused := False;
   try Publisher.Free except on EFiberUsage do Refused := True end;
   Check(Refused and (Destroyed = 0), 'EVENT_TIMEOUT_RETAINS_PAYLOAD');
-  Check(Publisher.Stop(200), 'EVENT_ACTIVE_SETTLED');
+  { Virtual completion is exact; allow host preemption in the cleanup watchdog. }
+  Check(Publisher.Stop(1000000), 'EVENT_ACTIVE_SETTLED');
+  Check(Driver.Time = 100, 'EVENT_ACTIVE_VIRTUAL_COMPLETION');
   Check((Handlers = 1) and (Finished = 1) and (Destroyed = 1), 'EVENT_ACTIVE_FINALLY');
   Check(Hub.DeliveredCount = 1, 'EVENT_COMPLETION_COUNT');
   Teardown;

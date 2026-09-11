@@ -48,9 +48,11 @@ end;
 {$I ../src/scheduler/tests-cases.inc}
 {$I ../src/scheduler/tests-stop-task.inc}
 {$I ../src/scheduler/tests-resume.inc}
+{$I ../src/scheduler/tests-clock-snapshot.inc}
 begin
   TestVirtual; TestTimersFairness; TestUsage; TestStop; TestPost; TestNativePostRace; TestMailboxFairness; TestTargetAndInvalid; TestClockFault; TestDrainParkRace; TestDriverFailureRetention;
   TestStopTaskClock; TestStopTaskHealthy; TestStopTaskNewFault; TestPostWakeFailure;
   TestResumeDefault; TestTraceDuplicate; TestConditions; TestResumeBackwardGeneration;
+  TestConsistentClockSnapshot;
   WriteLn('PASS SchedulerTests');
 end.
