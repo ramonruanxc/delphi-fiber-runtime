@@ -1,0 +1,343 @@
+{
+  "commit": "aca7c3fd01048f424f69286dbc938e87b1635561",
+  "dirty": false,
+  "platform": "Windows-2025Server-10.0.26100-SP0",
+  "machine": "AMD64",
+  "compiler": "3.2.2",
+  "target_cpu": "x86_64",
+  "target_os": "win64",
+  "build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co"
+  ],
+  "context_build_flags": [
+    "-B",
+    "-Mdelphi",
+    "-Sa",
+    "-Cr",
+    "-Co",
+    "-Ct",
+    "-O2"
+  ],
+  "power_mode": "not recorded; shared-runner timings are descriptive",
+  "checks": {
+    "ScheduleTests": "PASS ScheduleTests checks=70",
+    "PlatformTests": "Backend: windows-qpc-waitable-high-resolution\nPASS PlatformTests",
+    "NotificationTests": "Suspend detection available: TRUE\nPASS NotificationTests",
+    "ContextTests": "PASS ContextTests",
+    "SchedulerTests": "PASS SchedulerTests",
+    "ChannelTests": "PASS: channel FIFO, backpressure, close/drain, cancellation, ownership",
+    "ServiceTests": "PASS: service fixed epoch, persistent task, skips, stop, timeout, ownership",
+    "ServiceResumeTests": "PASS: periodic resume rebase, no replay, active preservation, segments, cancellation",
+    "EventHubTests": "PASS: managed event lifetime, bounded fanout, stop, active timeout, native post",
+    "PROVE_DRIFT": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: FIXED_RATE_NO_DRIFT"
+    },
+    "PROVE_OVERLAP": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: NO_OVERLAP"
+    },
+    "CONTEXT_PROVE_RTL": "not applicable: Windows uses native SEH, not the Unix SJLJ adapter",
+    "CONTEXT_PROVE_IDENTITY": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: CONTEXT_TASK_IDENTITY"
+    },
+    "CONTEXT_PROVE_READY": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: SCHEDULER_READY_ONCE"
+    },
+    "CONTEXT_PROVE_SERVICE_STOP": {
+      "exit_code": 1,
+      "assertion": "ASSERTION FAILED: SERVICE_STOP_NO_CALLBACK"
+    }
+  },
+  "ci": "https://github.com/ramonruanxc/delphi-fiber-runtime/actions/runs/34552183646",
+  "qualification": "descriptive; shared runners; no timing profile",
+  "runtime": {
+    "one-service": {
+      "services": 1,
+      "started_activations": 197,
+      "planned_activations": 200,
+      "skipped_activations": 3,
+      "accepted_events": 197,
+      "received_events": 197,
+      "disposed_events": 0,
+      "start_lateness_us": {
+        "p50": 428,
+        "p99": 848,
+        "max": 874
+      },
+      "inter_start_us": {
+        "p50": 1086,
+        "p99": 1590,
+        "max": 2832
+      },
+      "timer_observation_delay_us": {
+        "p50": 428,
+        "p99": 1022,
+        "max": 2181
+      },
+      "ready_to_resume_us": {
+        "p50": 3,
+        "p99": 5,
+        "max": 5
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 197,
+        "accepted": 197,
+        "delivered": 197,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 6840320,
+        "vms_bytes": 1687552,
+        "native_threads": 4,
+        "cpu_seconds": 0.015625
+      },
+      "allocation_api_calls": 0
+    },
+    "eight-services": {
+      "services": 8,
+      "started_activations": 1600,
+      "planned_activations": 1600,
+      "skipped_activations": 0,
+      "accepted_events": 1600,
+      "received_events": 1600,
+      "disposed_events": 0,
+      "start_lateness_us": {
+        "p50": 418,
+        "p99": 798,
+        "max": 855
+      },
+      "inter_start_us": {
+        "p50": 864,
+        "p99": 1636,
+        "max": 1831
+      },
+      "timer_observation_delay_us": {
+        "p50": 398,
+        "p99": 786,
+        "max": 847
+      },
+      "ready_to_resume_us": {
+        "p50": 18,
+        "p99": 141,
+        "max": 196
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 1600,
+        "accepted": 1600,
+        "delivered": 1600,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 6496256,
+        "vms_bytes": 1802240,
+        "native_threads": 4,
+        "cpu_seconds": 0.140625
+      },
+      "allocation_api_calls": 0
+    },
+    "32-services": {
+      "services": 32,
+      "started_activations": 6400,
+      "planned_activations": 6400,
+      "skipped_activations": 0,
+      "accepted_events": 6400,
+      "received_events": 6400,
+      "disposed_events": 0,
+      "start_lateness_us": {
+        "p50": 331,
+        "p99": 589,
+        "max": 976
+      },
+      "inter_start_us": {
+        "p50": 996,
+        "p99": 1104,
+        "max": 1824
+      },
+      "timer_observation_delay_us": {
+        "p50": 248,
+        "p99": 527,
+        "max": 608
+      },
+      "ready_to_resume_us": {
+        "p50": 74,
+        "p99": 531,
+        "max": 973
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 6400,
+        "accepted": 6400,
+        "delivered": 6400,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 7507968,
+        "vms_bytes": 3313664,
+        "native_threads": 4,
+        "cpu_seconds": 0.421875
+      },
+      "allocation_api_calls": 0
+    }
+  },
+  "mixed_comparisons": {
+    "reference-fibers-8-mixed": {
+      "services": 8,
+      "started_activations": 1550,
+      "planned_activations": 1600,
+      "skipped_activations": 50,
+      "start_lateness_us": {
+        "p50": 526,
+        "p99": 921,
+        "max": 950
+      },
+      "inter_start_us": {
+        "p50": 1023,
+        "p99": 1941,
+        "max": 1986
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 1550,
+        "accepted": 1550,
+        "delivered": 1550,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 6512640,
+        "vms_bytes": 1826816,
+        "native_threads": 4,
+        "cpu_seconds": 0.21875
+      },
+      "allocation_api_calls": 61
+    },
+    "reference-workers-8-mixed": {
+      "services": 8,
+      "started_activations": 1548,
+      "planned_activations": 1600,
+      "skipped_activations": 52,
+      "start_lateness_us": {
+        "p50": 535,
+        "p99": 947,
+        "max": 985
+      },
+      "inter_start_us": {
+        "p50": 1105,
+        "p99": 1740,
+        "max": 2018
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 1548,
+        "accepted": 1548,
+        "delivered": 1548,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 7188480,
+        "vms_bytes": 2572288,
+        "native_threads": 13,
+        "cpu_seconds": 0.25
+      },
+      "allocation_api_calls": 3208
+    },
+    "reference-pool-8-mixed": {
+      "services": 8,
+      "started_activations": 800,
+      "planned_activations": 1600,
+      "skipped_activations": 800,
+      "start_lateness_us": {
+        "p50": 463,
+        "p99": 792,
+        "max": 895
+      },
+      "inter_start_us": {
+        "p50": 1169,
+        "p99": 1357,
+        "max": 1727
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 800,
+        "accepted": 800,
+        "delivered": 800,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 6656000,
+        "vms_bytes": 1978368,
+        "native_threads": 9,
+        "cpu_seconds": 0.03125
+      },
+      "allocation_api_calls": 89
+    },
+    "reference-host-8-mixed": {
+      "services": 8,
+      "started_activations": 96,
+      "inter_start_us": {
+        "p50": 15810,
+        "p99": 16912,
+        "max": 16912
+      },
+      "events": {
+        "capacity": 256,
+        "payload_bytes": 64,
+        "fanout": 1,
+        "callback_us": 25,
+        "attempted": 96,
+        "accepted": 96,
+        "delivered": 96,
+        "disposed": 0,
+        "rejected": 0,
+        "handler_faults": 0
+      },
+      "sampled_peaks": {
+        "rss_bytes": 7204864,
+        "vms_bytes": 2568192,
+        "native_threads": 13,
+        "cpu_seconds": 0
+      },
+      "allocation_api_calls": 384
+    }
+  },
+  "comparison_runs": 24,
+  "limitations": "Reference host has unmodified interval policy; pool waiting jobs retain four workers. Allocation windows differ: runtime RunUntil vs references executor creation through joined shutdown. RSS/VMS are sampled process metrics, not portable committed/reserved memory. Full raw samples and remaining scenarios are in CI artifacts."
+}

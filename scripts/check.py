@@ -53,6 +53,7 @@ def benchmark(binary, args, csv_path):
     stderr_path = csv_path.with_suffix('.stderr.log')
     started_at = time.monotonic()
     peaks = dict(rss_bytes=0, vms_bytes=0, native_threads=0, cpu_seconds=0)
+    private_commit_peak = None
     observations = 0
     with csv_path.open('w', encoding='utf-8') as stdout, stderr_path.open('w', encoding='utf-8') as stderr:
         child = subprocess.Popen([str(binary), *args], stdout=stdout, stderr=stderr)
@@ -66,6 +67,9 @@ def benchmark(binary, args, csv_path):
                         memory, cpu = process.memory_info(), process.cpu_times()
                         peaks['rss_bytes'] = max(peaks['rss_bytes'], memory.rss)
                         peaks['vms_bytes'] = max(peaks['vms_bytes'], memory.vms)
+                        private = getattr(memory, 'private', None) if os.name == 'nt' else None
+                        if private is not None:
+                            private_commit_peak = max(private_commit_peak or 0, private)
                         peaks['native_threads'] = max(peaks['native_threads'], process.num_threads())
                         peaks['cpu_seconds'] = max(peaks['cpu_seconds'], cpu.user + cpu.system)
                         observations += 1
@@ -80,6 +84,10 @@ def benchmark(binary, args, csv_path):
             child.wait()
     return dict(observer='psutil sampled every 20ms' if psutil else 'unavailable',
                 observations=observations, sampled_peaks=peaks if observations else None,
+                memory_accounting=dict(private_committed_bytes=private_commit_peak,
+                    private_committed_status=('sampled Windows PrivateUsage peak; excludes shared mappings'
+                        if private_commit_peak is not None else 'unavailable for this observer/target'),
+                    reserved_bytes=None, reserved_status='not measured; RSS/VMS and stack requests are not reservations'),
                 elapsed_seconds=time.monotonic() - started_at,
                 limitation='Sampling can miss peaks and perturb timing. CPU is last observed cumulative usage; VMS is not committed memory.')
 

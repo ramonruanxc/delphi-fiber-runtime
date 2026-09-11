@@ -31,8 +31,12 @@ scenarios in shared CI are descriptive, without an agreed jitter threshold.
 Artifacts contain raw CSV, report JSON, compilation logs and environment/commit
 metadata. Optional psutil sampling reports observed RSS/VMS, thread count and CPU
 time; it can miss peaks, undercount final CPU and influence execution. VMS is not
-portable committed-memory accounting. Allocation counts and separate committed /
-reserved memory accounting remain future instrumentation.
+portable committed-memory accounting. Windows reports an additional sampled
+private committed-byte peak from psutil's `private` field (Windows PrivateUsage),
+excluding shared mappings. Other targets explicitly report that field unavailable;
+reserved bytes remain unavailable on all targets, never substituted with RSS/VMS
+or requested stack size. See [Windows counter semantics](https://learn.microsoft.com/en-us/windows/win32/api/psapi/ns-psapi-process_memory_counters_ex).
+The integrated demos also report FPC allocation entry calls as described below.
 
 The release workflow runs the same matrix on the tag revision before publishing
 source and native demo archives with SHA-256 checksums. A source archive is also
@@ -41,9 +45,9 @@ extracted into a clean temporary directory with spaces, compiled and executed.
 ## Evidence and limits
 
 [Local and hosted results](evidence/README.md) include Windows x86/x64, Linux WSL2,
-native hosted Linux and hosted macOS ARM64. GitHub Actions provides the full
-per-revision build artifacts. The suite has 55 deterministic schedule checks,
-native timer tests, context tests, 31 Python test methods and five negative
+native hosted Linux and hosted macOS ARM64/Intel. GitHub Actions provides the full
+per-revision build artifacts. The suite has 70 deterministic schedule checks,
+nine Pascal suites, 44 Python test methods and five negative
 executables on Windows (six on Unix). The optional reference comparison adds a
 named host-fault negative. Unix also runs the native context suite
 and a positive test of explicit missing-thread-manager rejection.

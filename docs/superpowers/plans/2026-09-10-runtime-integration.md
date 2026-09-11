@@ -55,13 +55,13 @@ Consumes Task2 exact signatures and existing Schedule unit. Produces channel/ser
 
 Files: `demo/RuntimeDemo.dpr`, `demo/ComparisonDemo.dpr`, `scripts/check.py`, `scripts/package.py`, new reporting/tests as needed, workflows and compatibility docs.
 
-- [ ] Resolve practical portability tiers and reference-library build availability from actual source/toolchains; implement useful supported fallbacks where needed without pretending fiber scalability.
-- [ ] Build mixed periodic/channel demo with 1,000 us services, measured planned/start/finish/counts, cancellation and quiescent shutdown. Preallocate timing buffers.
-- [ ] Compare equivalent native-thread, bounded-worker and cooperative workloads with declared model/reference distinction, resource sampling and no OS/performance guarantees.
-- [ ] Add all positive/named negative checks and semantic report validation; clean consumer builds and executes every packaged demo; hashes bind binaries to exact clean revision.
-- [ ] Run 3OS CI, preserve earlier evidence, resolve independent integration review findings.
+- [x] Resolve practical portability tiers and reference-library build availability from actual source/toolchains; implement useful supported fallbacks where needed without pretending fiber scalability.
+- [x] Build mixed periodic/channel demo with 1,000 us services, measured planned/start/finish/counts, cancellation and quiescent shutdown. Preallocate timing buffers.
+- [x] Compare equivalent native-thread, bounded-worker and cooperative workloads with declared model/reference distinction, resource sampling and no OS/performance guarantees.
+- [x] Add all positive/named negative checks and semantic report validation; clean consumer builds and executes every packaged demo; hashes bind binaries to exact clean revision.
+- [x] Run 3OS CI, preserve earlier evidence, resolve independent integration review findings.
 
-## Task 5: Full acceptance and publication (after Tasks 6â€“8)
+## Task 5: Full acceptance and publication (after Tasks 6Ã¢â‚¬â€œ8)
 
 Files: README, contracts, support/verification/evidence, changelog/release notes, final acceptance matrix.
 
@@ -73,27 +73,27 @@ Files: README, contracts, support/verification/evidence, changelog/release notes
 
 Files: Scheduler/its includes/tests, Schedule and ScheduleTests. Owned by scheduler implementer.
 
-- [ ] Separate valid forward resume-generation changes from invalid/backward clock faults. Default rpRebasePeriodic preserves tasks; rpStop remains configurable.
-- [ ] Add task AwaitUntilOrResume(deadline,generation), scheduler ResumeGeneration/ResumeEpochUs and target/predicate cleanup pumping.
-- [ ] Add inactive Rebase and complete-and-rebase semantics that close an active segment without counting sleep-time periods as ordinary missed cycles. Test crossing invocations and no replay.
-- [ ] Add per-task trace of requested deadline, first timer eligibility, first ready enqueue, resume, reason and generation. Duplicate wakes preserve first admission; test actual ordering without inventing selected-deadline ordering.
-- [ ] Run all prior and new tests, commit and independently review.
+- [x] Separate valid forward resume-generation changes from invalid/backward clock faults. Default rpRebasePeriodic preserves tasks; rpStop remains configurable.
+- [x] Add task AwaitUntilOrResume(deadline,generation), scheduler ResumeGeneration/ResumeEpochUs and target/predicate cleanup pumping.
+- [x] Add inactive Rebase and complete-and-rebase semantics that close an active segment without counting sleep-time periods as ordinary missed cycles. Test crossing invocations and no replay.
+- [x] Add per-task trace of requested deadline, first timer eligibility, first ready enqueue, resume, reason and generation. Duplicate wakes preserve first admission; test actual ordering without inventing selected-deadline ordering.
+- [x] Run all prior and new tests, commit and independently review.
 
 ## Task 7: Owned service communication and resume handling
 
 Files: Service/Channel/tests, new ServiceHooks/EventHub units/includes/tests. Owned by service implementer.
 
-- [ ] Service uses resume-aware wait and rebase between callbacks; active callbacks preserve ownership and close their old timing segment separately.
-- [ ] Add bounded managed payload hub, stable service endpoints, recipient-owned subscriptions and preallocated deliveries/post envelopes. All-or-none fanout, explicit rejection.
-- [ ] Service.Stop automatically stops endpoint admission, discards source deliveries, cancels its subscriptions and waits active attributed handlers; timeout retains ownership.
-- [ ] Test queued publish then source stop, active receiver timeout, recipient stop, late native posts after source destruction, payload finalizers and capacity faults. No use-after-free or callbacks after successful stop.
-- [ ] Run local targets, commit and independently review.
+- [x] Service uses resume-aware wait and rebase between callbacks; active callbacks preserve ownership and close their old timing segment separately.
+- [x] Add bounded managed payload hub, stable service endpoints, recipient-owned subscriptions and preallocated deliveries/post envelopes. All-or-none fanout, explicit rejection.
+- [x] Service.Stop automatically stops endpoint admission, discards source deliveries, cancels its subscriptions and waits active attributed handlers; timeout retains ownership.
+- [x] Test queued publish then source stop, active receiver timeout, recipient stop, late native posts after source destruction, payload finalizers and capacity faults. No use-after-free or callbacks after successful stop.
+- [x] Run local targets, commit and independently review.
 
 ## Task 8: Equivalent mixed traffic and segmented metrics
 
 Files: RuntimeDemo, ReferenceDemo, allocation probe, runtime_report/references and their tests. Owned by comparison implementer.
 
-- [ ] Record actual scheduler trace alongside callback boundaries with preallocated storage and segment/generation metadata. Separate crossing-discontinuity invocations from normal percentiles.
-- [ ] Add equivalent mixed-event workload for actual worker/pool/host APIs and cooperative runtime, declaring payload/capacity/fanout/work/cycle configuration and acceptance/delivery/rejection/discard accounting.
-- [ ] Preserve original-host cadence distinction and all strict fault/empty/provenance gates; validate malformed and loss/duplication traces before calculating statistics.
-- [ ] Test independently, commit, review and extend main check/package hooks through controller before Task5 publication.
+- [x] Record actual scheduler trace alongside callback boundaries with preallocated storage and segment/generation metadata. Separate crossing-discontinuity invocations from normal percentiles.
+- [x] Add equivalent mixed-event workload for actual worker/pool/host APIs and cooperative runtime, declaring payload/capacity/fanout/work/cycle configuration and acceptance/delivery/rejection/discard accounting.
+- [x] Preserve original-host cadence distinction and all strict fault/empty/provenance gates; validate malformed and loss/duplication traces before calculating statistics.
+- [x] Test independently, commit, review and extend main check/package hooks through controller before Task5 publication.

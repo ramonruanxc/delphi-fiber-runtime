@@ -1,5 +1,8 @@
 # First prototype measurements — 2026-09-10
 
+The complete runtime has [four-platform integration evidence](runtime-2026-09-11.md),
+including service events, dispatch stages and actual reference comparisons.
+
 The second milestone has its own [context experiment evidence](context-2026-09-10.md).
 The original periodic measurements below are retained unchanged.
 
