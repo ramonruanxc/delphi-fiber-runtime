@@ -23,7 +23,9 @@ increase wakeups and power usage. No native timer can guarantee scheduling laten
 under all loads. See [recorded evidence](evidence/README.md) for the exact revisions.
 
 The integrated runtime detects clock discontinuities using paired inclusive and
-active clocks and cancels dispatch instead of silently rebasing service epochs.
+active clocks. A valid resume starts a new periodic segment after any active
+invocation finishes. Invalid clocks cancel dispatch; an optional rpStop policy
+also stops on resume.
 Its 1,000 us sampling tolerance and availability are described in the
 [runtime contract](runtime-contract.md). Native reads and injected discontinuities
 are tested; physical suspend/resume cycles are not yet qualified. Older Windows
@@ -40,7 +42,7 @@ and backend ABI combinations still require builds.
 | FPC 3.2.2 Windows x64, default SEH | Windows fibers with floating-point switching | Local tests and hosted full checks / clean package passed |
 | FPC 3.2.2 Linux x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Local WSL and hosted full checks / clean packages passed |
 | FPC 3.2.2 macOS ARM64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full checks and clean package passed |
-| macOS x64 | Matching upstream assembly included | Execution not yet qualified |
+| FPC 3.2.2 macOS x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted integrated baseline passed; final release checks required |
 | Other FPC versions; Delphi | Additional RTL adapter required | Experimental context unit refuses compilation |
 
 See the [context evidence](evidence/context-2026-09-10.md) for the exact revision,

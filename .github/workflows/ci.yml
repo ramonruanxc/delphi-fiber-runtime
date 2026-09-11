@@ -25,9 +25,10 @@ jobs:
           python-version: '3.12'
       - name: Install FPC on Windows
         if: runner.os == 'Windows'
+        timeout-minutes: 5
         uses: gcarreno/setup-lazarus@v3
         with:
-          lazarus-version: stable
+          lazarus-version: '4.4'
       - name: Install FPC on Linux
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y fp-compiler fp-units-fcl build-essential

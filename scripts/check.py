@@ -122,13 +122,15 @@ def main():
     native = build_native(out / 'native')
     context_flags = ['-Fl' + str(native), '-Ct', '-O2']
     summary['context_build_flags'] = [*summary['build_flags'], '-Ct', '-O2']
-    for name in ('ScheduleTests', 'PlatformTests', 'NotificationTests', 'ContextTests', 'SchedulerTests', 'ChannelTests', 'ServiceTests'):
+    for name in ('ScheduleTests', 'PlatformTests', 'NotificationTests', 'ContextTests', 'SchedulerTests', 'ChannelTests', 'ServiceTests', 'ServiceResumeTests', 'EventHubTests'):
         binary = build(args.fpc, 'tests/' + name + '.dpr', out / name,
                        extra_flags=context_flags if name not in ('ScheduleTests', 'PlatformTests', 'NotificationTests') else ())
         result = run([binary], timeout=30)
         (out / name / 'run.log').write_text(result, encoding='utf-8')
         marker = {'ChannelTests': 'PASS: channel FIFO, backpressure, close/drain, cancellation, ownership',
-                  'ServiceTests': 'PASS: service fixed epoch, persistent task, skips, stop, timeout, ownership'}.get(name, 'PASS ' + name)
+                  'ServiceTests': 'PASS: service fixed epoch, persistent task, skips, stop, timeout, ownership',
+                  'ServiceResumeTests': 'PASS: periodic resume rebase, no replay, active preservation, segments, cancellation',
+                  'EventHubTests': 'PASS: managed event lifetime, bounded fanout, stop, active timeout, native post'}.get(name, 'PASS ' + name)
         if marker not in result:
             raise RuntimeError('Missing positive test marker: ' + name)
         summary['checks'][name] = result.strip()

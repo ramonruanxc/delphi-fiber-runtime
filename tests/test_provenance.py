@@ -15,4 +15,3 @@ class ProvenanceTests(unittest.TestCase):
             self.assertFalse(dirty(root))
             (root / 'ShadowUnit.pas').write_text('unit ShadowUnit;', encoding='utf-8')
             self.assertTrue(dirty(root))
-

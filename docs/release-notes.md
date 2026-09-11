@@ -1,7 +1,8 @@
-Second experimental milestone of Delphi Fiber Runtime: cooperative stackful tasks
-alongside the independent fixed-rate periodic scheduler and cancellable timers.
+Integrated experimental release: cooperative tasks, fixed-rate periodic services,
+compatible timer/channel waits, bounded mailbox and explicit lifecycle ownership.
 
-Includes Windows, Linux and macOS packages with PeriodicDemo and ContextDemo,
+Includes Windows, Linux and macOS ARM64/Intel packages with PeriodicDemo,
+ContextDemo and RuntimeDemo,
 tracked source and SHA-256
 checksums. The release workflow compiles and executes functional tests, negative
 builds, descriptive benchmarks and clean-consumer checks on the tagged revision.
@@ -13,8 +14,16 @@ It tests nested suspension, managed state, error containment and cooperative
 cancellation before allowing stack destruction. The MIT and Boost notices are
 included in native packages.
 
+Adds reusable notifications, periodic rebase after detected resume, clock-fault
+cleanup, independently stoppable services, owned event endpoints and channel
+backpressure. Mixed-workload comparisons consume actual pinned pool/service-host
+APIs; traces separate timer eligibility, enqueue, resume and callback execution.
+Allocation entry calls and FPC heap observations complement sampled OS resources.
+
 Timing is descriptive, with no universal 1 ms guarantee. Delphi context validation
 remains pending; FPC results do not certify Delphi compatibility. Suspending during
-exception handlers/unwinding and system sleep/resume handling remain unqualified.
-Blocking calls are not transparently asynchronous. Timer/channel/service integration
-is the next milestone; this is not a complete Java-style virtual-thread runtime.
+exception handlers/unwinding and physical system sleep/resume remain unqualified.
+Invalid clocks stop admission and permit cleanup. Valid resumes preserve active
+workflows and start a new periodic segment without replaying elapsed sleep periods.
+Blocking calls are not transparently asynchronous. See docs/acceptance.md for
+implemented behavior and qualification boundaries.

@@ -25,7 +25,9 @@ ser usado de forma independente. Implementação e limites seguem o
 - Agendador FIFO limitado, mailbox entre threads e notificações sem perder sinais.
 - `Delay`, `AwaitUntil` e canais com contrapressão, fechamento e limpeza.
 - Serviços com uma invocação ativa, parada individual e timeout sem destruir pilhas.
-- Detecção de descontinuidade do relógio com cancelamento e limpeza segura.
+- Eventos com payload gerenciado, capacidade limitada e descarte na parada.
+- Retomada detectada inicia outro segmento periódico sem reproduzir ciclos antigos.
+- Relógios inválidos interrompem o despacho e permitem limpeza cooperativa.
 
 `Yield` devolve explicitamente o controle ao executor. Ele pode então retomar
 outra tarefa. Código bloqueante arbitrário ainda bloqueia a thread. Use operações
@@ -74,7 +76,9 @@ RuntimeDemo --services 8 --cycles 200 --await-us 2500
 
 O segundo cenário suspende cada callback por 2,5 ms para verificar convivência
 entre serviços e descarte dos ciclos que passaram durante a invocação. O JSON
-registra eventos aceitos/recebidos, início/fim por serviço e observações do heap.
+registra eventos aceitos, recebidos e descartados, etapas de despacho por serviço
+e observações do heap. Invocações que atravessam uma retomada são separadas das
+distribuições de execução contínua.
 Consulte a [API e regras de uso](docs/runtime-contract.md).
 
 ## Como interpretar 1 ms
