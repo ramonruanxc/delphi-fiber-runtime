@@ -30,8 +30,8 @@ jobs:
               if not target.exists():
                   shutil.copy2(source, target)
           archives = sorted(destination.glob('*.zip'))
-          if len(archives) != 4:
-              raise RuntimeError(f'Expected source plus three native archives, got {len(archives)}')
+          if len(archives) != 5:
+              raise RuntimeError(f'Expected source plus four native archives, got {len(archives)}')
           (destination / 'SHA256SUMS.txt').write_text(''.join(
               hashlib.sha256(p.read_bytes()).hexdigest() + '  ' + p.name + '\n' for p in archives))
       - name: Publish prototype release

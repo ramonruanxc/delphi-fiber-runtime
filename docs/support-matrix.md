@@ -22,10 +22,12 @@ clock/timer units and requests reduced coalescing with NOTE_CRITICAL. This can
 increase wakeups and power usage. No native timer can guarantee scheduling latency
 under all loads. See [recorded evidence](evidence/README.md) for the exact revisions.
 
-Suspend/resume detection, rebasing and discontinuity records from the full design
-are not yet implemented. These measurements cover uninterrupted execution only;
-do not qualify a run spanning system sleep. The OS clock/timer suspend semantics
-differ. This limitation must be resolved before support includes resume behavior.
+The integrated runtime detects clock discontinuities using paired inclusive and
+active clocks and cancels dispatch instead of silently rebasing service epochs.
+Its 1,000 us sampling tolerance and availability are described in the
+[runtime contract](runtime-contract.md). Native reads and injected discontinuities
+are tested; physical suspend/resume cycles are not yet qualified. Older Windows
+without precise interrupt-time APIs reports detection unavailable explicitly.
 
 The portable schedule uses a conservative Pascal API, but historical compilers
 and backend ABI combinations still require builds.
@@ -54,5 +56,15 @@ Neither is a measurement of committed memory or a claim of stack-overflow recove
 
 Managed locals and explicit LocalValue are exercised by context tests; ordinary
 threadvars remain shared. Exception-handler/unwind suspension, task migration,
-transparent blocking calls and full timer/channel/service integration remain
-outside this milestone. See [context contract](context-contract.md).
+transparent blocking calls remain outside context qualification. Integrated
+timer/channel/service support has its own [runtime contract](runtime-contract.md).
+
+## Integrated runtime validation
+
+Local scheduler/channel/service tests passed on Windows x86/x64 and WSL Linux x64.
+Full Windows x86 and WSL Linux checks include the mixed demo and pinned reference
+comparisons. Hosted validation covers Windows x64, Linux x64, macOS ARM64 and now
+also targets macOS x64 (`macos-15-intel`); publication requires all four jobs.
+The context table above records prior milestone evidence until those runs finish.
+The standalone schedule core can be probed without importing Context; broader
+Delphi support is unvalidated, not implied by conservative Pascal syntax.

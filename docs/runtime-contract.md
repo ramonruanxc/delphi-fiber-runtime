@@ -12,11 +12,29 @@ native TPlatformTimer. An injected driver is borrowed and supports virtual-time
 tests. `TPlatformTimer.WaitUntilOrWake` returns twDeadline, twNotified or
 twCancelled; Notify is reusable and coalesced, Cancel stays sticky. Existing
 WaitUntil ignores notifications and still waits for the deadline/cancellation.
+Cancellation has priority, then an already elapsed deadline, then notification.
+Expired-deadline calls preserve a pending notification.
+
+`TSchedulerDriver.ClockGeneration: Int64` defaults to zero; custom drivers must
+override it to report discontinuities. The native driver uses paired-clock
+`TPlatformTimer.SuspendGeneration` and exposes availability separately through
+`SuspendDetectionAvailable`. A 1,000 us sampling tolerance avoids mistaking
+preemption for sleep; under the documented paired-clock model cumulative offset
+growth above 3,000 us is distinguishable, smaller changes are not guaranteed.
+Wide/invalid samples raise EClockDiscontinuity. Old Windows versions without
+the required precise clocks remain explicitly unavailable for this detector.
+Physical power-cycle acceptance is separate from simulated and native clock tests.
+The scheduler's owner-only `ClockDiscontinuity: Boolean` becomes sticky when
+time moves backward or the generation changes. It prevents new dispatch/admission,
+requests cancellation and reports the fault; `Stop` still drives finally cleanup.
+During fault cleanup a coarse GetTickCount64 budget bounds cooperative turns,
+and task time reads use the last valid time when the native clock reports a fault.
 
 `TFiberScheduler.Create(AMaxTasks: Integer = 1024; ADriver: TSchedulerDriver = nil)`
 preallocates bounded task/ready/mailbox storage. It owns all spawned task handles
 until destruction. Handles remain valid until then. Terminal tasks do not release
 admission slots: capacity bounds total Spawn calls in this scheduler lifetime.
+The owner-only `MaxTasks: Integer` exposes that bound to channel waiter storage.
 `Spawn(AProc: TScheduledProc; AData: Pointer): TScheduledTask`, where
 `TScheduledProc = procedure(ATask: TScheduledTask; AData: Pointer)`.
 `RunUntil(ADeadlineUs: Int64): Boolean` dispatches FIFO turns, checks timers and
@@ -24,6 +42,9 @@ mailbox every bounded turn and returns true only if all tasks and posted work
 settled; false means deadline elapsed with resources retained. Ready work never
 uses Sleep or blocks on native waits. Only an idle carrier parks at the nearest
 task/run deadline. Deadline eligibility is rechecked after wakeup.
+`RunTaskUntil(ATask: TScheduledTask; ADeadlineUs: Int64): Boolean` instead returns
+when that owned task is terminal, permitting independent service stop while other
+services remain registered. All pumps reject reentrant calls.
 An O(capacity) timer scan is acceptable initially and must be measured honestly.
 
 `NowUs: Int64`, `CurrentTask: TScheduledTask`, `CheckOwner`,
@@ -37,6 +58,10 @@ and counted in `PostFaultCount: Int64`; callers own their payload lifetime.
 Publish-before-notify plus the persistent native notification must prevent a
 lost wakeup between draining work and parking. RequestStop is thread-safe and
 idempotent. It rejects new admission and requests cancellation of all tasks.
+Admission and notification are transactional under the mailbox lock: a failing
+Wake rolls back the queue entry before the exception escapes. Therefore a raised
+Post has not accepted the borrowed payload. Driver Wake must never reenter the
+scheduler, suspend or call application code while that leaf lock is held.
 
 `Stop(ATimeoutUs: Int64): Boolean` is owner-only, requests stop and drives cleanup
 until settled or timeout. Destroy rejects live tasks and undrained posts before
@@ -44,6 +69,10 @@ freeing anything. A callback that blocks or never yields cannot be preempted;
 timeouts are checked when the carrier regains control, never advertised as hard
 interrupts. Cancelling a task makes a compatible wait ready, permits finally
 cleanup, and never deletes a live stack.
+`StopTask(ATask: TScheduledTask; ATimeoutUs: Int64): Boolean` performs target
+cancellation and cleanup with the same fault-tolerant budget. On a healthy
+scheduler it leaves other tasks and admission active; detected clock faults stop
+all admission. Service.Stop delegates to this operation.
 
 `TScheduledTask` exposes `Yield`, `Delay(ADurationUs: Int64)`,
 `AwaitUntil(ADeadlineUs: Int64)`, `Park`, `Cancel`, `CheckCancelled`;
@@ -66,6 +95,9 @@ registration is removed in finally even when cancellation is raised.
 `Close` rejects sends, lets buffered values drain, and wakes both sides; false
 means closed. `Discard` empties the buffer without freeing borrowed values.
 Destroy refuses active waiters. No silent overwrite or unbounded waiter storage.
+Carrier calls are allowed when Send/Receive can complete immediately; only a
+blocking path requires a current task. Channel lifetime must end before its
+scheduler is destroyed, and the same ordering applies to service objects.
 
 `TFiberService.Create(AScheduler: TFiberScheduler; APeriodUs: Int64;
 AProc: TServiceProc; AData: Pointer)`, where
@@ -79,6 +111,7 @@ is terminal or timeout; successful Stop means no subsequent invocation.
 are owner-only. Destruction refuses an active task. Each invocation may suspend,
 but remains active throughout; completion uses the original fixed-rate schedule
 to skip every elapsed cycle. Faults stop the service and remain on Task.
+Owner-only `EpochUs` and `PeriodUs` expose the actual schedule definition.
 
 Events use one explicit bounded channel per subscription; a receiver task owns
 its subscription lifetime. Publishing uses TrySend with an explicit full result,
