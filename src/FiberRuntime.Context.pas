@@ -1,19 +1,26 @@
 unit FiberRuntime.Context;
 
-{$IFNDEF FPC}
-{$MESSAGE FATAL 'Context experiment requires FPC 3.2.2'}
-{$ENDIF}
 {$IFDEF FPC}
 {$MODE DELPHI}
 {$H+}
 {$IF FPC_FULLVERSION <> 30202}
 {$FATAL Context experiment requires FPC 3.2.2}
 {$ENDIF}
+{$ELSE}
+{ Delphi XE7+ on Windows builds with no project configuration, but the adapter
+  is unvalidated until its suites run; see docs/context-contract.md. }
+{$IF CompilerVersion < 28}
+{$MESSAGE FATAL 'Delphi context requires Delphi XE7 or later'}
+{$ENDIF}
+{$IFNDEF MSWINDOWS}
+{$MESSAGE FATAL 'Delphi context requires Windows'}
+{$ENDIF}
 {$ENDIF}
 {$IFDEF MSWINDOWS}
 {$DEFINE WINDOWS}
 {$ENDIF}
 {$IFDEF WINDOWS}
+{$IFDEF FPC}
 {$IFDEF CPU386}
 {$IFNDEF FPC_USE_WIN32_SEH}
 {$FATAL Context requires native Win32 SEH}
@@ -25,6 +32,14 @@ unit FiberRuntime.Context;
 {$ENDIF}
 {$ELSE}
 {$FATAL Unsupported Windows context CPU}
+{$ENDIF}
+{$ENDIF}
+{$ELSE}
+{ Delphi always uses native SEH (Win32) or table-based unwinding (Win64). }
+{$IFNDEF CPUX86}
+{$IFNDEF CPUX64}
+{$MESSAGE FATAL 'Unsupported Delphi context CPU'}
+{$ENDIF}
 {$ENDIF}
 {$ENDIF}
 {$ELSE}
@@ -59,7 +74,7 @@ type
   { Internal, unmanaged snapshot. Layout is private to this experiment. }
   TContextRTL = record
     Bottom: Pointer;
-    Length: SizeUInt;
+    Length: NativeUInt;
     {$IFNDEF WINDOWS}
     Head: PExceptAddr;
     {$ENDIF}
@@ -68,7 +83,7 @@ type
   TFiberRuntime = class
   private
     FOwner: TThreadID;
-    FChildren: SizeInt;
+    FChildren: NativeInt;
     FAttached: Boolean;
     FRoot: Pointer;
     FCurrent: TFiberTask;
@@ -95,11 +110,15 @@ type
     FErrorClass, FErrorMessage: string;
     FRTL: TContextRTL;
     { Tasks are created only by their runtime factory. }
+    {$IFDEF FPC}
     {$PUSH}
     {$WARN 3018 OFF}
+    {$ENDIF}
     constructor Create(ARuntime: TFiberRuntime; AProc: TFiberProc;
       AData: Pointer; AStackBytes: NativeUInt);
+    {$IFDEF FPC}
     {$POP}
+    {$ENDIF}
     procedure CheckOwner;
     procedure Execute;
     procedure DoYield;
@@ -124,6 +143,10 @@ type
     property LocalValue: Pointer read GetLocalValue write SetLocalValue;
   end;
 
+{ True while this thread has an active exception object. Guards context
+  switches in handlers; it is not universal unwinding detection. }
+function ContextExceptionActive: Boolean;
+
 implementation
 
 {$IFDEF WINDOWS}
@@ -135,16 +158,29 @@ uses
 threadvar
   AttachedRuntime: TFiberRuntime;
 
+  {$IFDEF FPC}
   {$I context/fpc322-rtl.inc}
+  {$ELSE}
+  {$I context/delphi-rtl.inc}
+  {$ENDIF}
   {$IFDEF WINDOWS}
   {$I context/windows.inc}
   {$ELSE}
   {$I context/unix.inc}
   {$ENDIF}
 
+function ContextExceptionActive: Boolean;
+begin
+  {$IFDEF FPC}
+  Result := RaiseList <> nil;
+  {$ELSE}
+  Result := ExceptObject <> nil;
+  {$ENDIF}
+end;
+
 procedure RequireNoHandler;
 begin
-  if RaiseList <> nil then
+  if ContextExceptionActive then
     raise EFiberUsage.Create('Context switching during exception handling is prohibited');
 end;
 

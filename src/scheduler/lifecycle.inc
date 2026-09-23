@@ -31,7 +31,7 @@ begin
   CheckOwner;
   if FPumping then
     raise EFiberUsage.Create('Scheduler pump cannot be reentered');
-  if RaiseList <> nil then
+  if ContextExceptionActive then
     raise EFiberUsage.Create('Scheduler pump during exception handling is prohibited');
 end;
 

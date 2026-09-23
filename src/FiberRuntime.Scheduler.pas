@@ -8,6 +8,9 @@ unit FiberRuntime.Scheduler;
 interface
 
 uses
+  {$IFNDEF FPC}
+  Windows,
+  {$ENDIF}
   SysUtils,
   FiberRuntime.Context;
 
@@ -53,10 +56,14 @@ type
     FTrace: TSchedulerTaskTrace;
     FDeadline: Int64;
     FQueued, FRelease: Boolean;
+    {$IFDEF FPC}
     {$PUSH}
     {$WARN 3018 OFF}
+    {$ENDIF}
     constructor Create(AOwner: TFiberScheduler; AProc: TScheduledProc; AData: Pointer);
+    {$IFDEF FPC}
     {$POP}
+    {$ENDIF}
     procedure RequireCurrent;
     procedure BeginTimedWait(ADeadline: Int64);
     function GetTrace: TSchedulerTaskTrace;
@@ -149,6 +156,13 @@ implementation
 
 uses
   FiberRuntime.Platform;
+
+{$I compat/critical-section.inc}
+
+{$IFNDEF FPC}
+{ FPC's System unit provides this; declare it for Delphi (Vista or later). }
+function GetTickCount64: UInt64; stdcall; external 'kernel32.dll' name 'GetTickCount64';
+{$ENDIF}
 
 type
   TNativeSchedulerDriver = class(TSchedulerDriver)

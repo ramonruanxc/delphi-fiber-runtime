@@ -16,17 +16,21 @@ procedure ContextSwitchFiber(Fiber: Pointer); stdcall;
 procedure ContextDeleteFiber(Fiber: Pointer); stdcall;
   external 'kernel32.dll' name 'DeleteFiber';
 
+{$IFDEF FPC}
 {$PUSH}
 {$S-}
+{$ENDIF}
 procedure NativeEntry(Data: Pointer); stdcall;
 var
   Task: TFiberTask;
 begin
   Task := TFiberTask(Data);
+  {$IFDEF FPC}
   { StackTop reads the native TIB. Requested reserve rounds to 64 KiB;
     metadata is conservative when the EXE default commit makes the OS reserve
     more. Bounds tests do not qualify guard-page/stack-overflow recovery. }
   Task.FRTL.Bottom := PByte(System.StackTop) - Task.FRTL.Length;
+  {$ENDIF}
   InstallRTL(Task.FRTL);
   Task.Execute;
   SwitchRTL(Task.FRTL, Task.FRuntime.FRTL);
@@ -50,7 +54,9 @@ begin
   InstallRTL(Task.FRTL);
   Result := 0;
 end;
+{$IFDEF FPC}
 {$POP}
+{$ENDIF}
 
 procedure NativeAttach(Runtime: TFiberRuntime);
 begin
