@@ -15,12 +15,13 @@ uses
   ServiceHost.Host,
   ServiceHost.Bus,
   ServiceHost.Events,
-  FiberRuntime.Platform,
-  FiberRuntime.Schedule,
-  FiberRuntime.Context,
-  FiberRuntime.Scheduler,
-  FiberRuntime.Service,
-  FiberRuntime.EventHub;
+  FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas',
+  FiberRuntime.Schedule in '../src/FiberRuntime.Schedule.pas',
+  FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
+  FiberRuntime.Scheduler in '../src/FiberRuntime.Scheduler.pas',
+  FiberRuntime.ServiceHooks in '../src/FiberRuntime.ServiceHooks.pas',
+  FiberRuntime.Service in '../src/FiberRuntime.Service.pas',
+  FiberRuntime.EventHub in '../src/FiberRuntime.EventHub.pas';
 
 type
   TSample = record
