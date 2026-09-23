@@ -13,7 +13,9 @@ uses
   SysUtils,
   FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
   FiberRuntime.Schedule in '../src/FiberRuntime.Schedule.pas',
+  FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas',
   FiberRuntime.Scheduler in '../src/FiberRuntime.Scheduler.pas',
+  FiberRuntime.ServiceHooks in '../src/FiberRuntime.ServiceHooks.pas',
   FiberRuntime.Service in '../src/FiberRuntime.Service.pas',
   FiberRuntime.EventHub in '../src/FiberRuntime.EventHub.pas';
 

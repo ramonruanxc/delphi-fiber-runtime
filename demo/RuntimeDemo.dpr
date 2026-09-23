@@ -11,12 +11,13 @@ uses
   cthreads,
   {$ENDIF}
   SysUtils,
-  FiberRuntime.Context,
-  FiberRuntime.Schedule,
-  FiberRuntime.Platform,
-  FiberRuntime.Scheduler,
-  FiberRuntime.Service,
-  FiberRuntime.EventHub;
+  FiberRuntime.Context in '../src/FiberRuntime.Context.pas',
+  FiberRuntime.Schedule in '../src/FiberRuntime.Schedule.pas',
+  FiberRuntime.Platform in '../src/FiberRuntime.Platform.pas',
+  FiberRuntime.Scheduler in '../src/FiberRuntime.Scheduler.pas',
+  FiberRuntime.ServiceHooks in '../src/FiberRuntime.ServiceHooks.pas',
+  FiberRuntime.Service in '../src/FiberRuntime.Service.pas',
+  FiberRuntime.EventHub in '../src/FiberRuntime.EventHub.pas';
 
 type
   TSample = record
