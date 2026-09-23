@@ -106,6 +106,8 @@ begin
   end;
 end;
 
+{$I ConsolePause.inc}
+
 begin
   try
     Run;
@@ -113,7 +115,9 @@ begin
     on E: Exception do
     begin
       WriteLn(E.ClassName, ': ', E.Message);
+      PauseUnderDebugger;
       Halt(1);
     end;
   end;
+  PauseUnderDebugger;
 end.

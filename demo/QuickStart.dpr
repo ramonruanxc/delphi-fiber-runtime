@@ -143,14 +143,18 @@ begin
   end;
 end;
 
+{$I ConsolePause.inc}
+
 begin
   try
     Run;
   except
     on E: Exception do
     begin
-      WriteLn(StdErr, E.ClassName, ': ', E.Message);
+      WriteLn(ErrOutput, E.ClassName, ': ', E.Message);
+      PauseUnderDebugger;
       Halt(1);
     end;
   end;
+  PauseUnderDebugger;
 end.
