@@ -2,6 +2,9 @@ program ContextDemo;
 
 {$IFDEF FPC}
 {$MODE DELPHI}
+{ FPC resolves in-paths from the working directory; this keeps
+  "fpc demo/ContextDemo.dpr" working from the repository root. }
+{$UNITPATH ../src}
 {$ENDIF}
 {$APPTYPE CONSOLE}
 
@@ -29,16 +32,16 @@ procedure Work(ATask: TFiberTask; AData: Pointer);
 var
   I: Integer;
   Context: PWork;
-  Saved: PtrUInt;
+  Saved: NativeUInt;
 begin
   Context := PWork(AData);
-  Saved := PtrUInt(Context^.LocalTag) * 17;
+  Saved := NativeUInt(Context^.LocalTag) * 17;
   for I := 1 to YieldsPerTask do
   begin
     Inc(Context^.YieldCount);
     ATask.Yield;
     if (ATask.LocalValue <> Context^.LocalTag) or
-      (Saved <> PtrUInt(Context^.LocalTag) * 17) then
+      (Saved <> NativeUInt(Context^.LocalTag) * 17) then
       raise Exception.Create('Task-local or stack state corrupted');
   end;
 end;
@@ -68,7 +71,7 @@ begin
   Timer := TPlatformTimer.Create;
   for I := 0 to TaskCount - 1 do
   begin
-    Data[I].LocalTag := Pointer(PtrUInt(I + 1));
+    Data[I].LocalTag := Pointer(NativeUInt(I + 1));
     Tasks[I] := Runtime.CreateTask(Work, @Data[I], StackBytes);
     Tasks[I].LocalValue := Data[I].LocalTag;
   end;
@@ -110,6 +113,8 @@ begin
   Runtime.Free;
 end;
 
+{$I ConsolePause.inc}
+
 begin
   try
     Run;
@@ -118,7 +123,9 @@ begin
     begin
       { A failed experiment exits; it never force-deletes a live stack. }
       WriteLn(E.ClassName, ': ', E.Message);
+      PauseUnderDebugger;
       Halt(1);
     end;
   end;
+  PauseUnderDebugger;
 end.

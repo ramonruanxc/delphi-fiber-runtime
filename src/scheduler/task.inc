@@ -34,7 +34,7 @@ begin
   FOwner.CheckOwner;
   if FOwner.FCurrent <> Self then
     raise EFiberUsage.Create('Wait belongs to the current task');
-  if RaiseList <> nil then
+  if ContextExceptionActive then
     raise EFiberUsage.Create('Wait during exception handling is prohibited');
 end;
 

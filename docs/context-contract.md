@@ -9,6 +9,13 @@ Initial compiler qualification is explicitly FPC 3.2.2. Other FPC versions and
 Delphi must fail clearly when compiling the experimental context unit, while
 the existing independent periodic units remain available. Compiler-specific RTL
 state handling belongs in one compatibility include, never application code.
+
+Exception: Delphi XE7 or later on Windows x86/x64 compiles without project
+configuration, so a cloned demo opens and runs directly. It selects
+`context/delphi-rtl.inc` over the same native Windows fibers. SwitchToFiber
+carries the SEH chain and stack bounds Delphi uses, so that adapter keeps no
+extra RTL state. Older Delphi versions and other Delphi targets still fail with a
+named message. No Delphi combination is qualified until its own suites have run.
 Unix programs must list cthreads first in their uses clause. The runtime rejects
 FPC's stock no-thread manager; custom thread managers are not qualified.
 

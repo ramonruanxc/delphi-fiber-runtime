@@ -44,7 +44,8 @@ and backend ABI combinations still require builds.
 | FPC 3.2.2 Linux x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Local WSL and hosted full checks / clean packages passed |
 | FPC 3.2.2 macOS ARM64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full checks and clean package passed |
 | FPC 3.2.2 macOS x64 | Boost.Context 1.85.0 C ABI, FPC SJLJ adapter | Hosted full integrated checks and clean package passed |
-| Other FPC versions; Delphi | Additional RTL adapter required | Experimental context unit refuses compilation |
+| Delphi XE7+ Windows x86/x64 | Windows fibers, no-op Delphi RTL adapter | Compiles without configuration by design; no build or test executed |
+| Other FPC versions; other Delphi builds | Additional RTL adapter required | Experimental context unit refuses compilation |
 
 See the [context evidence](evidence/context-2026-09-10.md) for the exact revision,
 flags and measurements. Context guards check FPC version and the expected Windows SEH configuration.

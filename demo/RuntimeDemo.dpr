@@ -2,6 +2,9 @@ program RuntimeDemo;
 
 {$IFDEF FPC}
 {$MODE DELPHI}
+{ FPC resolves in-paths from the working directory; this keeps
+  "fpc demo/RuntimeDemo.dpr" working from the repository root. }
+{$UNITPATH ../src}
 {$H+}
 {$ENDIF}
 {$APPTYPE CONSOLE}
@@ -302,14 +305,18 @@ begin
   Scheduler.Free;
 end;
 
+{$I ConsolePause.inc}
+
 begin
   try
     Run;
   except
     on E: Exception do
     begin
-      WriteLn(StdErr, E.ClassName, ': ', E.Message);
+      WriteLn(ErrOutput, E.ClassName, ': ', E.Message);
+      PauseUnderDebugger;
       Halt(1);
     end;
   end;
+  PauseUnderDebugger;
 end.

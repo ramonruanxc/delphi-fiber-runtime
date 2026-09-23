@@ -7,9 +7,35 @@ Periodic services, cooperative waits and managed events in Object Pascal.
 Each service reuses a task with its own stack; many tasks share one native thread.
 A service waiting for a timer or channel releases that thread to another task.
 
-The runtime is experimental. The integrated fiber API currently requires
-**Free Pascal 3.2.2** on the targets listed below. The standalone periodic core
-is separate; Delphi support is not implied by the project name.
+The runtime is experimental. The integrated fiber API is validated only with
+**Free Pascal 3.2.2** on the targets listed below. Delphi XE7 or later on
+Windows compiles it without configuration, but no Delphi build has been
+executed yet. The standalone periodic core is separate.
+
+## Quick start
+
+```sh
+git clone https://github.com/ramonruanxc/delphi-fiber-runtime.git
+```
+
+- **Delphi XE7 or later (Windows):** open `demo/QuickStart.dpr` and press F9.
+  Unit paths are in the program file; no search paths or defines are needed.
+- **FPC 3.2.2 on Windows:** from the repository root, `fpc demo/QuickStart.dpr`,
+  then `demo\QuickStart.exe`.
+- **FPC on Linux or macOS:** `python scripts/build_example.py`, which also builds
+  the static context helper.
+
+The run takes about a third of a second and ends with:
+
+```text
+Last message: Hello from tick 5
+period_us=50000 started=5 skipped=0
+published=5 received=5 discarded=0 aborted=0
+PASS: QuickStart services and managed events stopped cleanly
+```
+
+`ContextDemo`, `PeriodicDemo` and `RuntimeDemo` open and run the same way.
+`ReferenceDemo` needs pinned sibling sources and is used only by automation.
 
 ```pascal
 Scheduler := TFiberScheduler.Create(2);           { producer + subscriber task }
@@ -277,16 +303,16 @@ Functional validation is separate from timing or physical suspend qualification.
 |---|---|
 | Integrated runtime functionally exercised | FPC 3.2.2: Windows x86/x64, Linux x64 (hosted native and local WSL2), macOS Intel x64 and ARM64 hosted runners |
 | Standalone periodic core | Tested on those FPC targets; it has no context dependency |
-| Delphi | Unvalidated. The installed Delphi 12 edition refused CLI compilation; the integrated context unit rejects Delphi builds |
+| Delphi | Unvalidated. The installed Delphi 12 edition refused CLI compilation; XE7+ Windows builds use an unexecuted adapter; older Delphi versions are rejected |
 | Other FPC versions / CPUs | Require their own RTL adapters and execution evidence; context guards reject unsupported combinations |
 | Outside this milestone | Mobile, transparent blocking I/O, task migration, hard real-time guarantees and qualified physical suspend/resume cycles |
 
 Windows uses native fibers with floating-point state preservation. Unix links
 the bundled Boost.Context 1.85.0 assembly through a small C helper; `cthreads`
 must appear first in the program's `uses` clause. Custom thread managers and
-nondefault exception/sanitizer configurations are unqualified. Explicit `in`
-paths in QuickStart aid source navigation; opening it in a Delphi IDE does not
-remove the compiler restriction.
+nondefault exception/sanitizer configurations are unqualified. Demo programs
+list every unit with an explicit `in` path, so they build from a fresh clone
+without search paths; that does not qualify an unexecuted compiler.
 
 Valid detected resumes rebase periodic segments after active invocations finish;
 invalid clocks stop admission and request cooperative cleanup. Older Windows

@@ -7,6 +7,9 @@ unit FiberRuntime.EventHub;
 interface
 
 uses
+  {$IFNDEF FPC}
+  Windows,
+  {$ENDIF}
   FiberRuntime.Scheduler,
   FiberRuntime.Service,
   FiberRuntime.ServiceHooks;
@@ -111,6 +114,8 @@ implementation
 uses
   SysUtils,
   FiberRuntime.Context;
+
+{$I compat/critical-section.inc}
 
 procedure DispatchEntry(Task: TScheduledTask; Data: Pointer);
 begin

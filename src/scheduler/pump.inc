@@ -131,21 +131,21 @@ var
   T: TScheduledTask;
   Work: TCarrierWork;
   HadPost: Boolean;
-  WallStart, WallBudget: QWord;
+  WallStart, WallBudget: UInt64;
 begin
   FPumping := True;
   FInCleanup := Cleanup;
   HadPost := False;
   try
     WallStart := GetTickCount64;
-    WallBudget := High(QWord);
+    WallBudget := High(UInt64);
     if Cleanup then
     begin
       N := ClockNow(True);
       if Deadline <= N then
         WallBudget := 0
       else
-        WallBudget := QWord((Deadline - N) div 1000) + 1;
+        WallBudget := UInt64((Deadline - N) div 1000) + 1;
     end;
     while True do
     begin
