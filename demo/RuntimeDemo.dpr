@@ -254,7 +254,11 @@ begin
     ',"allocation_api_calls":', ProbeMeasuredCalls,
     ',"pascal_heap_used_before":', ProbeBefore.CurrHeapUsed,
     ',"pascal_heap_used_after":', ProbeAfter.CurrHeapUsed,
+    {$IFDEF FPC}
     ',"pascal_heap_peak_used":', ProbeAfter.MaxHeapUsed,
+    {$ELSE}
+    ',"pascal_heap_peak_used":null',
+    {$ENDIF}
     ',"events":{"enabled":true,"payload_bytes":', PayloadBytes,
     ',"fanout":1,"capacity":', Capacity, ',"callback_us":', CallbackUs,
     ',"attempted":', Sent + Rejected, ',"accepted":', Sent, ',"delivered":', Received,
