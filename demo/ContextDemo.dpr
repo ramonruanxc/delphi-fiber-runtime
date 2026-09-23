@@ -2,6 +2,9 @@ program ContextDemo;
 
 {$IFDEF FPC}
 {$MODE DELPHI}
+{ FPC resolves in-paths from the working directory; this keeps
+  "fpc demo/ContextDemo.dpr" working from the repository root. }
+{$UNITPATH ../src}
 {$ENDIF}
 {$APPTYPE CONSOLE}
 

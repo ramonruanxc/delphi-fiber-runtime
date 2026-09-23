@@ -2,6 +2,9 @@ program RuntimeDemo;
 
 {$IFDEF FPC}
 {$MODE DELPHI}
+{ FPC resolves in-paths from the working directory; this keeps
+  "fpc demo/RuntimeDemo.dpr" working from the repository root. }
+{$UNITPATH ../src}
 {$H+}
 {$ENDIF}
 {$APPTYPE CONSOLE}

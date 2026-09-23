@@ -20,7 +20,8 @@ git clone https://github.com/ramonruanxc/delphi-fiber-runtime.git
 
 - **Delphi XE7 or later (Windows):** open `demo/QuickStart.dpr` and press F9.
   Unit paths are in the program file; no search paths or defines are needed.
-- **FPC 3.2.2 on Windows:** `cd demo`, `fpc QuickStart.dpr`, then `QuickStart.exe`.
+- **FPC 3.2.2 on Windows:** from the repository root, `fpc demo/QuickStart.dpr`,
+  then `demo\QuickStart.exe`.
 - **FPC on Linux or macOS:** `python scripts/build_example.py`, which also builds
   the static context helper.
 
